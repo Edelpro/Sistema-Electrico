@@ -1,0 +1,241 @@
+<section class="module-page" aria-labelledby="orders-title">
+  <header class="module-head">
+    <div>
+      <span class="eyebrow">Operación en campo</span>
+      <h1 id="orders-title">Órdenes de trabajo</h1>
+      <p>Prioriza, asigna y sigue cortes y reconexiones con trazabilidad.</p>
+    </div>
+    <button type="button" class="primary" (click)="editor.set(true)">
+      <app-icon name="plus" />Nueva orden
+    </button>
+  </header>
+  @if (exito()) {
+    <div class="notice success" role="status"><app-icon name="check-circle" />{{ exito() }}</div>
+  }
+  @if (error()) {
+    <div class="notice error" role="alert">
+      {{ error() }} <button type="button" (click)="error.set('')">Cerrar</button>
+    </div>
+  }
+  <div class="toolbar">
+    <label
+      ><app-icon name="search" /><span class="sr-only">Buscar órdenes</span
+      ><input
+        type="search"
+        [formControl]="busqueda"
+        placeholder="Buscar código, suministro, causa o técnico"
+      />
+      @if (busqueda.value) {
+        <button
+          class="clear-search"
+          type="button"
+          aria-label="Limpiar búsqueda"
+          (click)="limpiar()"
+        >
+          <app-icon name="close" />
+        </button>
+      }</label
+    ><strong>{{ total() }} órdenes</strong>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Orden</th>
+          <th>Suministro / zona</th>
+          <th>Prioridad</th>
+          <th>SLA</th>
+          <th>Asignación</th>
+          <th>Estado</th>
+          <th><span class="sr-only">Acción</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr>
+            <td colspan="7" class="empty">Cargando órdenes…</td>
+          </tr>
+        } @else {
+          @for (o of ordenes(); track o.id) {
+            <tr>
+              <td>
+                <strong>{{ o.codigo }}</strong
+                ><small>{{ o.tipo }} · {{ o.causa }}</small>
+              </td>
+              <td>
+                {{ o.numeroSuministro }}<small>{{ o.zona || o.titularActual }}</small>
+              </td>
+              <td>
+                <span class="priority" [class.critical]="o.prioridad === 'CRITICA'">{{
+                  o.prioridad
+                }}</span>
+              </td>
+              <td>{{ fecha(o.fechaLimiteSlaUtc) }}</td>
+              <td>
+                {{ o.tecnico || o.cuadrilla || 'Sin asignar' }}
+                @if (o.tecnico && o.cuadrilla) {
+                  <small>Cuadrilla {{ o.cuadrilla }}</small>
+                }
+              </td>
+              <td>
+                <span class="status">{{ o.estado }}</span>
+              </td>
+              <td><button type="button" class="link" (click)="ver(o)">Gestionar</button></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="empty">No hay órdenes que coincidan.</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+  <footer class="pager">
+    <span>Página {{ pagina() }}</span>
+    <div>
+      <button type="button" (click)="anterior()" [disabled]="pagina() === 1">Anterior</button
+      ><button type="button" (click)="siguiente()" [disabled]="pagina() * 10 >= total()">
+        Siguiente
+      </button>
+    </div>
+  </footer>
+</section>
+@if (editor()) {
+  <div class="overlay" (click)="editor.set(false)">
+    <section
+      class="drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-order"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">Alta manual</span>
+          <h2 id="new-order">Nueva orden</h2>
+          <p>El motivo y cada cambio quedarán auditados.</p>
+        </div>
+        <button class="icon-close" type="button" (click)="editor.set(false)" aria-label="Cerrar">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <form [formGroup]="form" (ngSubmit)="crear()" novalidate>
+        <div class="form-grid">
+          <label>Suministro<select formControlName="numeroSuministro"><option value="">Selecciona un suministro</option>@for (s of catalogos()?.suministros ?? []; track s.id) {<option [value]="s.numeroSuministro">{{ s.numeroSuministro }} · {{ s.titular }}</option>}</select></label
+          ><label
+            >Tipo<select formControlName="tipo">
+              <option value="CORTE">Corte</option>
+              <option value="RECONEXION">Reconexión</option>
+            </select></label
+          ><label>Causa<input formControlName="causa" placeholder="MORA, PAGO_CONFIRMADO…" /></label
+          ><label
+            >Prioridad<select formControlName="prioridad">
+              <option>NORMAL</option>
+              <option>ALTA</option>
+              <option>CRITICA</option>
+            </select></label
+          ><label
+            >Límite SLA opcional<input
+              type="datetime-local"
+              formControlName="fechaLimiteSlaUtc" /></label
+          ><label
+            >Técnico opcional<select formControlName="correoTecnico"><option value="">Sin técnico</option>@for (t of catalogos()?.tecnicos ?? []; track t.id) {<option [value]="t.correo">{{ t.nombre }} · {{ t.correo }}</option>}</select></label
+          ><label
+            >Cuadrilla opcional<select formControlName="codigoCuadrilla"><option value="">Sin cuadrilla</option>@for (c of catalogos()?.cuadrillas ?? []; track c.id) {<option [value]="c.codigo">{{ c.codigo }} · {{ c.nombre }} · {{ c.zona }}</option>}</select></label>
+        </div>
+        <label>Motivo<textarea rows="3" formControlName="motivo"></textarea></label>
+        <p class="hint">
+          El sistema no promete 10 o 24 horas: el SLA se define desde una política autorizada.
+        </p>
+        <footer>
+          <button type="button" class="secondary" (click)="editor.set(false)">Cancelar</button
+          ><button type="submit" class="primary" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Crear orden' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+@if (detalle(); as o) {
+  <div class="overlay" (click)="detalle.set(null)">
+    <section
+      class="drawer detail"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="order-detail"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">{{ o.tipo }}</span>
+          <h2 id="order-detail">{{ o.codigo }}</h2>
+          <p>{{ o.numeroSuministro }} · {{ o.titularActual }}</p>
+        </div>
+        <button class="icon-close" type="button" (click)="detalle.set(null)" aria-label="Cerrar">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <div class="order-summary">
+        <span class="status">{{ o.estado }}</span
+        ><span class="priority">{{ o.prioridad }}</span
+        ><strong>{{ o.tecnico || o.cuadrilla || 'Sin asignar' }}</strong
+        ><small>{{ fecha(o.fechaLimiteSlaUtc) }}</small>
+      </div>
+      <p>{{ o.direccionServicio }}</p>
+      @if (o.activa) {
+        <div class="actions">
+          <button class="secondary" type="button" (click)="abrirAccion('asignar')">
+            Asignar personal
+          </button>
+          @if (opciones(o).length) {
+            <button class="primary" type="button" (click)="abrirAccion('estado')">
+              Cambiar estado
+            </button>
+          }
+        </div>
+      }
+      @if (accion()) {
+        <form class="action-form" [formGroup]="accionForm" (ngSubmit)="guardarAccion()" novalidate>
+          @if (accion() === 'asignar') {
+            <div class="form-grid">
+              <label>Técnico<select formControlName="correoTecnico"><option value="">Sin técnico</option>@for (t of catalogos()?.tecnicos ?? []; track t.id) {<option [value]="t.correo">{{ t.nombre }} · {{ t.correo }}</option>}</select></label
+              ><label>Cuadrilla<select formControlName="codigoCuadrilla"><option value="">Sin cuadrilla</option>@for (c of catalogos()?.cuadrillas ?? []; track c.id) {<option [value]="c.codigo">{{ c.codigo }} · {{ c.nombre }}</option>}</select></label>
+            </div>
+            <p class="hint">Indica un técnico, una cuadrilla o ambos.</p>
+          } @else {
+            <label
+              >Nuevo estado<select formControlName="estadoNuevo">
+                <option value="">Selecciona</option>
+                @for (e of opciones(o); track e) {
+                  <option [value]="e">{{ e }}</option>
+                }
+              </select></label
+            ><label
+              >Observación opcional<textarea rows="2" formControlName="observacion"></textarea>
+            </label>
+          }
+          <label>Motivo obligatorio<textarea rows="2" formControlName="motivo"></textarea></label>
+          <footer>
+            <button type="button" class="secondary" (click)="accion.set(null)">Cancelar</button
+            ><button type="submit" class="primary" [disabled]="guardando()">Guardar cambio</button>
+          </footer>
+        </form>
+      }
+      <h3>Historial</h3>
+      <ol class="timeline">
+        @for (h of o.historial; track h.fechaUtc) {
+          <li>
+            <span></span>
+            <div>
+              <strong>{{ h.estadoAnterior || 'INICIO' }} → {{ h.estadoNuevo }}</strong
+              ><small>{{ fecha(h.fechaUtc) }} · {{ h.actor || 'Sistema' }}</small>
+              <p>{{ h.motivo }}</p>
+            </div>
+          </li>
+        }
+      </ol>
+    </section>
+  </div>
+}

@@ -1,0 +1,210 @@
+<main class="login-page">
+  <section class="service-story" aria-labelledby="service-title">
+    <div class="story-copy">
+      <h1 id="service-title">Servicio eléctrico<br />más cerca de ti</h1>
+      <p>Gestiona, consulta y da seguimiento a tus servicios en un solo lugar.</p>
+    </div>
+
+    <div class="energy-scene" aria-hidden="true">
+      <svg viewBox="0 0 760 260" role="presentation">
+        <path
+          class="land"
+          d="M16 209c76 0 111-15 167-15 69 0 111 20 177 20 78 0 127-15 200-15 66 0 102 10 184 10"
+        />
+        <path
+          class="flow"
+          d="M18 207c67 0 83-28 134-28 44 0 54-49 93-49h244c48 0 52 58 97 58h158"
+        />
+        <circle class="node" cx="152" cy="179" r="8" />
+        <circle class="node" cx="245" cy="130" r="8" />
+        <circle class="node node--attention" cx="489" cy="130" r="8" />
+        <circle class="node" cx="586" cy="188" r="8" />
+        <circle class="node" cx="696" cy="207" r="8" />
+        <g class="tower">
+          <path
+            d="M366 49 322 211M366 49l44 162M342 92h48M333 129h66M326 169h80M342 211l24-42 24 42"
+          />
+        </g>
+        <g class="house">
+          <path d="m55 182 27-22 27 22v29H55zM70 211v-18h24v18" />
+        </g>
+        <g class="city">
+          <path
+            d="M625 209v-67h51v67M676 209v-94h43v94M637 157h8M657 157h8M637 174h8M657 174h8M689 131h8M706 131h5M689 150h8M706 150h5M689 169h8M706 169h5"
+          />
+        </g>
+      </svg>
+    </div>
+
+    <div class="capabilities" aria-label="Funciones principales">
+      <article>
+        <div class="capability-icon capability-icon--blue">
+          <app-icon name="file-text" />
+        </div>
+        <h2>Consulta pagos y facturas</h2>
+        <p>Revisa tu historial y mantén tus pagos al día.</p>
+      </article>
+
+      <article>
+        <div class="capability-icon capability-icon--orange">
+          <app-icon name="clipboard" />
+        </div>
+        <h2>Seguimiento de órdenes</h2>
+        <p>Conoce el estado de tus solicitudes en tiempo real.</p>
+      </article>
+
+      <article>
+        <div class="capability-icon capability-icon--cyan">
+          <app-icon name="users" />
+        </div>
+        <h2>Atención según tu rol</h2>
+        <p>Acceso para administradores, técnicos y clientes.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="login-panel" aria-labelledby="login-title">
+    <div class="login-content">
+      <div class="brand-lockup" aria-label="SGSE, Servicio eléctrico">
+        <span class="brand-mark" aria-hidden="true">
+          <app-icon name="bolt" />
+        </span>
+        <span>
+          <strong>SGSE</strong>
+          <small>Servicio eléctrico</small>
+        </span>
+      </div>
+
+      <header class="login-header">
+        <h2 id="login-title">Accede a tu cuenta</h2>
+        <p>Ingresa tus credenciales para continuar.</p>
+      </header>
+
+      <form [formGroup]="formulario" (ngSubmit)="iniciarSesion()" novalidate>
+        <div class="field">
+          <label for="correo">Correo electrónico</label>
+          <div class="input-shell">
+            <app-icon name="mail" />
+            <input
+              #correoInput
+              id="correo"
+              type="email"
+              formControlName="correo"
+              placeholder="usuario@correo.com"
+              autocomplete="email"
+              [attr.aria-invalid]="
+                formulario.controls.correo.touched && formulario.controls.correo.invalid
+                  ? 'true'
+                  : null
+              "
+              [attr.aria-describedby]="
+                formulario.controls.correo.touched && formulario.controls.correo.invalid
+                  ? 'correo-error'
+                  : null
+              "
+            />
+          </div>
+
+          @if (formulario.controls.correo.touched && formulario.controls.correo.invalid) {
+            <p class="field-error" id="correo-error">
+              @if (formulario.controls.correo.hasError('required')) {
+                Ingresa tu correo electrónico.
+              } @else {
+                Escribe un correo electrónico válido.
+              }
+            </p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <div class="input-shell input-shell--password">
+            <app-icon name="lock" />
+            <input
+              #passwordInput
+              id="password"
+              [type]="mostrarPassword() ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Ingresa tu contraseña"
+              autocomplete="current-password"
+              [attr.aria-invalid]="
+                formulario.controls.password.touched && formulario.controls.password.invalid
+                  ? 'true'
+                  : null
+              "
+              [attr.aria-describedby]="
+                formulario.controls.password.touched && formulario.controls.password.invalid
+                  ? 'password-error'
+                  : null
+              "
+            />
+            <button
+              type="button"
+              class="password-toggle"
+              (click)="alternarPassword()"
+              [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              [attr.aria-pressed]="mostrarPassword()"
+            >
+              <app-icon [name]="mostrarPassword() ? 'eye-off' : 'eye'" />
+            </button>
+          </div>
+
+          @if (formulario.controls.password.touched && formulario.controls.password.invalid) {
+            <p class="field-error" id="password-error">Ingresa tu contraseña.</p>
+          }
+        </div>
+
+        <a class="forgot-link" routerLink="/recuperar-contrasena">¿Olvidaste tu contraseña?</a>
+
+        @if (mensajeError()) {
+          <div class="form-alert" role="alert">
+            <span aria-hidden="true">!</span>
+            <p>{{ mensajeError() }}</p>
+          </div>
+        }
+
+        <button
+          class="submit-button"
+          type="submit"
+          [disabled]="cargando()"
+          [attr.aria-busy]="cargando()"
+        >
+          @if (cargando()) {
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Verificando credenciales…</span>
+          } @else {
+            <span>Iniciar sesión</span>
+            <app-icon name="arrow-right" />
+          }
+        </button>
+      </form>
+
+      <div class="support-region">
+        <button
+          type="button"
+          class="support-toggle"
+          (click)="alternarAyuda()"
+          [attr.aria-expanded]="mostrarAyuda()"
+          aria-controls="support-detail"
+        >
+          <app-icon name="help" />
+          <span>¿Necesitas ayuda para ingresar? <strong>Contactar soporte</strong></span>
+        </button>
+
+        @if (mostrarAyuda()) {
+          <p id="support-detail" class="support-detail" role="status">
+            Solicita al administrador de tu institución que verifique tu correo y tu rol de acceso.
+          </p>
+        }
+      </div>
+
+      <footer class="login-footer">
+        <span class="security-note">
+          <app-icon name="lock" />
+          Conexión protegida
+        </span>
+        <span>Sistema de Gestión del Servicio Eléctrico · Versión 1.0</span>
+      </footer>
+    </div>
+  </section>
+</main>

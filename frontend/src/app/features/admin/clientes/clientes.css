@@ -1,0 +1,583 @@
+table {
+  min-width: 83rem;
+}
+
+.client-content {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.module-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.primary-action,
+.secondary-action,
+.confirmation-action {
+  min-height: 2.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.76rem;
+  font-weight: 800;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.primary-action {
+  color: #fff;
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+}
+
+.primary-action:hover:not(:disabled) {
+  border-color: var(--color-primary-strong);
+  background: var(--color-primary-strong);
+}
+
+.primary-action app-icon,
+.confirmation-action app-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.primary-action:disabled,
+.secondary-action:disabled,
+.confirmation-action:disabled,
+.icon-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.secondary-action {
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-canvas);
+}
+
+.secondary-action:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.success-banner {
+  min-height: 3.25rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: var(--color-success-soft);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.success-banner > app-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.success-banner button,
+.icon-action {
+  width: 2.7rem;
+  height: 2.7rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: currentColor;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.success-banner button:hover,
+.icon-action:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.client-editor {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-panel);
+}
+
+.editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.editor-step {
+  color: var(--color-primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.editor-heading h2,
+.editor-heading p {
+  margin: 0;
+}
+
+.editor-heading h2 {
+  margin-top: 0.25rem;
+  color: var(--color-text);
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.editor-heading p {
+  margin-top: 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.editor-heading .icon-action {
+  color: var(--color-text-muted);
+}
+
+.editor-loading {
+  min-height: 15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.client-editor form {
+  display: grid;
+}
+
+.form-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 1rem 1.25rem 0;
+  padding: 0.75rem 0.85rem;
+  color: var(--color-danger);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: var(--color-danger-soft);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.form-alert app-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.15rem;
+  padding: 1.2rem 1.25rem 1.35rem;
+}
+
+.form-field {
+  display: grid;
+  align-content: start;
+  gap: 0.4rem;
+}
+
+.form-field--wide {
+  grid-column: 1 / -1;
+}
+
+.form-field label {
+  color: var(--color-text);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.form-field label > span,
+.form-actions p > span {
+  color: var(--color-danger);
+}
+
+.form-field label > small {
+  margin-left: 0.35rem;
+  color: var(--color-text-subtle);
+  font-size: 0.65rem;
+  font-weight: 650;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  min-width: 0;
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  font-size: 0.8rem;
+}
+
+.form-field input,
+.form-field select {
+  min-height: 3.25rem;
+  padding: 0 0.85rem;
+}
+
+.form-field textarea {
+  min-height: 6.4rem;
+  padding: 0.75rem 0.85rem;
+  line-height: 1.5;
+  resize: none;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--color-primary);
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.form-field input[aria-invalid='true'],
+.form-field select[aria-invalid='true'],
+.form-field textarea[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.form-field input[aria-invalid='true']:focus,
+.form-field select[aria-invalid='true']:focus,
+.form-field textarea[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 3px var(--color-danger-soft);
+}
+
+#client-document {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+.field-help,
+.field-error {
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.field-help {
+  color: var(--color-text-subtle);
+}
+
+.field-error {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-canvas);
+}
+
+.form-actions p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+}
+
+.form-actions > div {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.save-action {
+  min-width: 9.5rem;
+}
+
+.button-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
+  border-radius: var(--radius-full);
+  animation: client-spin 750ms linear infinite;
+}
+
+@keyframes client-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.id-stack {
+  display: grid;
+  justify-items: start;
+  gap: 0.35rem;
+}
+
+.id-stack strong {
+  color: var(--color-text);
+  font-size: 0.73rem;
+  white-space: nowrap;
+}
+
+.contact-value {
+  white-space: nowrap;
+}
+
+.address-value {
+  min-width: 13rem;
+  max-width: 20rem;
+  display: block;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.row-actions {
+  min-width: 13rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.row-action {
+  min-height: 2.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.65rem;
+  color: var(--color-primary);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  font-size: 0.67rem;
+  font-weight: 800;
+}
+
+.row-action:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.row-action app-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.row-action--state {
+  color: var(--color-attention);
+}
+
+.row-action--state:hover {
+  border-color: var(--color-attention);
+  background: var(--color-attention-soft);
+}
+
+.row-action--restore {
+  color: var(--color-success);
+}
+
+.row-action--restore:hover {
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-backdrop);
+  background: var(--color-overlay);
+}
+
+.confirmation-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: var(--z-dialog);
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  display: grid;
+  gap: 0.8rem;
+  padding: 1.35rem;
+  overflow: auto;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-popover);
+  transform: translate(-50%, -50%);
+}
+
+.confirmation-icon {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  color: var(--color-attention);
+  border-radius: var(--radius-full);
+  background: var(--color-attention-soft);
+}
+
+.confirmation-icon app-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.confirmation-dialog h2,
+.confirmation-dialog p {
+  margin: 0;
+}
+
+.confirmation-dialog h2 {
+  font-size: 1.15rem;
+  letter-spacing: -0.025em;
+}
+
+.confirmation-dialog > p {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.confirmation-reason {
+  margin-top: 0.25rem;
+}
+
+.dialog-error {
+  padding: 0.7rem 0.8rem;
+  color: var(--color-danger);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.confirmation-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.confirmation-action {
+  min-width: 7.5rem;
+  color: #fff;
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+}
+
+.confirmation-action:hover:not(:disabled) {
+  border-color: var(--color-primary-strong);
+  background: var(--color-primary-strong);
+}
+
+.confirmation-action--warning {
+  color: var(--color-attention);
+  border-color: var(--color-attention);
+  background: var(--color-attention-soft);
+}
+
+.confirmation-action--warning:hover:not(:disabled) {
+  color: #fff;
+  border-color: var(--color-attention);
+  background: var(--color-attention);
+}
+
+.confirmation-action--danger {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+}
+
+.confirmation-action--danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-danger) 80%, black);
+  background: color-mix(in srgb, var(--color-danger) 80%, black);
+}
+
+@media (max-width: 760px) {
+  .module-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .module-actions .primary-action {
+    flex: 1 1 11rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-field--wide {
+    grid-column: auto;
+  }
+
+  .form-actions {
+    position: static;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .form-actions > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 460px) {
+  .module-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .module-actions .module-count {
+    width: 100%;
+  }
+
+  .editor-heading,
+  .form-grid,
+  .form-actions {
+    padding-right: 0.9rem;
+    padding-left: 0.9rem;
+  }
+
+  .form-actions > div {
+    grid-template-columns: 1fr;
+  }
+
+  .confirmation-dialog footer {
+    flex-direction: column;
+  }
+
+  .confirmation-dialog footer button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner {
+    animation: none;
+    border-color: currentColor;
+  }
+}

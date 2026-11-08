@@ -1,0 +1,481 @@
+<section class="users-module" aria-labelledby="meters-title">
+  <div class="client-content" [attr.inert]="confirmacion() ? '' : null">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">Medición e historial</span>
+        <h1 id="meters-title">Medidores eléctricos</h1>
+        <p>Registra cada medidor, su suministro, tipo, fecha de instalación y estado operativo.</p>
+      </div>
+      <div class="module-actions">
+        <div class="module-count" aria-label="Total de medidores">
+          <span>{{ total() }}</span
+          ><small>{{ total() === 1 ? 'medidor' : 'medidores' }}</small>
+        </div>
+        <button
+          #createButton
+          type="button"
+          class="primary-action"
+          [attr.aria-expanded]="editorAbierto()"
+          aria-controls="meter-editor"
+          (click)="abrirCrear($event)"
+        >
+          <app-icon name="plus" />Registrar medidor
+        </button>
+      </div>
+    </header>
+
+    @if (mensajeExito()) {
+      <div #successMessage class="success-banner" role="status" tabindex="-1">
+        <app-icon name="check-circle" /><span>{{ mensajeExito() }}</span
+        ><button type="button" aria-label="Cerrar confirmación" (click)="ocultarMensajeExito()">
+          <app-icon name="close" />
+        </button>
+      </div>
+    }
+
+    @if (editorAbierto()) {
+      <section id="meter-editor" class="client-editor" aria-labelledby="meter-editor-title">
+        <header class="editor-heading">
+          <div>
+            <span class="editor-step">{{
+              editando() ? 'Edición auditada' : 'Nuevo equipo de medición'
+            }}</span>
+            <h2 #editorHeading id="meter-editor-title" tabindex="-1">
+              {{ editando() ? 'Editar medidor' : 'Registrar medidor' }}
+            </h2>
+            <p>
+              {{
+                editando()
+                  ? 'Actualiza los datos y explica el motivo del cambio.'
+                  : 'El suministro debe existir, estar activo y no tener otro medidor activo.'
+              }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="icon-action"
+            aria-label="Cerrar formulario de medidor"
+            [disabled]="guardando()"
+            (click)="solicitarCerrarEditor()"
+          >
+            <app-icon name="close" />
+          </button>
+        </header>
+        @if (cargandoDetalle()) {
+          <div class="editor-loading" role="status">
+            <span class="loading-indicator" aria-hidden="true"></span><span>Cargando medidor…</span>
+          </div>
+        } @else {
+          <form #meterForm [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+            @if (mensajeFormulario()) {
+              <div class="form-alert" role="alert">
+                <app-icon name="help" /><span>{{ mensajeFormulario() }}</span>
+              </div>
+            }
+            <div class="form-grid meter-form-grid">
+              <div class="form-field">
+                <label for="meter-serial">Número de medidor <span>*</span></label
+                ><input
+                  id="meter-serial"
+                  formControlName="numeroSerie"
+                  maxlength="50"
+                  autocomplete="off"
+                  [attr.aria-invalid]="mostrarError('numeroSerie')"
+                  [attr.aria-describedby]="
+                    mostrarError('numeroSerie') ? 'meter-serial-error' : 'meter-serial-help'
+                  "
+                /><small id="meter-serial-help" class="field-help"
+                  >Serie física impresa en el equipo.</small
+                >
+                @if (mostrarError('numeroSerie')) {
+                  <small id="meter-serial-error" class="field-error">{{
+                    errorCampo('numeroSerie')
+                  }}</small>
+                }
+              </div>
+              <div class="form-field">
+                <label for="meter-supply">Número de suministro <span>*</span></label
+                ><select
+                  id="meter-supply"
+                  formControlName="numeroSuministro"
+                  [attr.aria-invalid]="mostrarError('numeroSuministro')"
+                  [attr.aria-describedby]="
+                    mostrarError('numeroSuministro') ? 'meter-supply-error' : 'meter-supply-help'
+                  "
+                >
+                  <option value="">Selecciona un suministro activo</option>
+                  @for (suministro of catalogos()?.suministros ?? []; track suministro.id) {
+                    <option [value]="suministro.numeroSuministro">
+                      {{ suministro.numeroSuministro }} · {{ suministro.titular }}
+                    </option>
+                  }
+                </select><small id="meter-supply-help" class="field-help"
+                  >El medidor quedará instalado en el suministro seleccionado.</small
+                >
+                @if (catalogosError()) {
+                  <small class="field-error">{{ catalogosError() }}</small>
+                }
+                @if (mostrarError('numeroSuministro')) {
+                  <small id="meter-supply-error" class="field-error">{{
+                    errorCampo('numeroSuministro')
+                  }}</small>
+                }
+              </div>
+              <div class="form-field">
+                <label for="meter-type">Tipo de medición <span>*</span></label
+                ><select
+                  id="meter-type"
+                  formControlName="tipoMedicion"
+                  [attr.aria-invalid]="mostrarError('tipoMedicion')"
+                >
+                  <option value="CONVENCIONAL">Convencional</option>
+                  <option value="INTELIGENTE">Inteligente</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+                @if (mostrarError('tipoMedicion')) {
+                  <small class="field-error">{{ errorCampo('tipoMedicion') }}</small>
+                }
+              </div>
+              <div class="form-field">
+                <label for="installed-date">Fecha de instalación <span>*</span></label
+                ><input
+                  id="installed-date"
+                  type="date"
+                  formControlName="fechaInstalacion"
+                [max]="fechaMaxima"
+                  [attr.aria-invalid]="mostrarError('fechaInstalacion')"
+                  [attr.aria-describedby]="
+                    mostrarError('fechaInstalacion') ? 'installed-date-error' : null
+                  "
+                />
+                @if (mostrarError('fechaInstalacion')) {
+                  <small id="installed-date-error" class="field-error">{{
+                    errorCampo('fechaInstalacion')
+                  }}</small>
+                }
+              </div>
+              @if (editando()) {
+                <div class="form-field form-field--wide">
+                  <label for="meter-reason">Motivo administrativo <span>*</span></label
+                  ><textarea
+                    id="meter-reason"
+                    class="resize-none"
+                    formControlName="motivo"
+                    rows="3"
+                    maxlength="250"
+                    [attr.aria-invalid]="mostrarError('motivo')"
+                    [attr.aria-describedby]="
+                      mostrarError('motivo') ? 'meter-reason-error' : 'meter-reason-help'
+                    "
+                  ></textarea
+                  ><small id="meter-reason-help" class="field-help"
+                    >Se registra en auditoría junto con los valores anteriores y nuevos.</small
+                  >
+                  @if (mostrarError('motivo')) {
+                    <small id="meter-reason-error" class="field-error">{{
+                      errorCampo('motivo')
+                    }}</small>
+                  }
+                </div>
+              }
+            </div>
+            <div class="security-note">
+              <app-icon name="lock" />
+              <p>
+                Solo puede existir un medidor activo por suministro. Los equipos retirados o
+                reemplazados permanecen en el historial.
+              </p>
+            </div>
+            <footer class="form-actions">
+              <p><span>*</span> Campos obligatorios</p>
+              <div>
+                <button
+                  type="button"
+                  class="secondary-action"
+                  [disabled]="guardando()"
+                  (click)="solicitarCerrarEditor()"
+                >
+                  Cancelar</button
+                ><button
+                  type="submit"
+                  class="primary-action save-action"
+                  [disabled]="guardando() || cargandoDetalle()"
+                  [attr.aria-busy]="guardando()"
+                >
+                  @if (guardando()) {
+                    <span class="button-spinner" aria-hidden="true"></span>Guardando…
+                  } @else {
+                    <app-icon name="check-circle" />{{
+                      editando() ? 'Guardar cambios' : 'Registrar medidor'
+                    }}
+                  }
+                </button>
+              </div>
+            </footer>
+          </form>
+        }
+      </section>
+    }
+
+    <div class="users-toolbar">
+      <div class="search-field">
+        <label for="meters-search">Buscar medidor</label>
+        <div class="search-control">
+          <app-icon name="search" /><input
+            #searchInput
+            id="meters-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Serie, suministro, contrato, CUEN o titular"
+            [formControl]="busqueda"
+          />
+          @if (busqueda.value) {
+            <button
+              type="button"
+              aria-label="Limpiar búsqueda de medidores"
+              (click)="limpiarBusqueda()"
+            >
+              <app-icon name="close" />
+            </button>
+          }
+        </div>
+      </div>
+      <p class="toolbar-status" role="status" aria-live="polite">
+        @if (estado() === 'cargando') {
+          Consultando medidores…
+        } @else if (estado() === 'error') {
+          La consulta no está disponible.
+        } @else if (busqueda.value.trim()) {
+          {{ total() }} {{ total() === 1 ? 'resultado' : 'resultados' }} para “{{
+            busqueda.value.trim()
+          }}”.
+        } @else {
+          Mostrando medidores registrados y su relación con suministros.
+        }
+      </p>
+    </div>
+
+    <div class="users-panel">
+      @if (estado() === 'cargando') {
+        <div class="state-panel" role="status" aria-live="polite">
+          <span class="loading-indicator" aria-hidden="true"></span>
+          <h2>Consultando medidores</h2>
+          <p>Espera mientras se obtiene la información.</p>
+        </div>
+      } @else if (estado() === 'error') {
+        <div class="state-panel state-panel--error" role="alert">
+          <span class="state-icon" aria-hidden="true"><app-icon name="gauge" /></span>
+          <h2>No se pudo cargar el módulo</h2>
+          <p>{{ mensajeError() }}</p>
+          <button type="button" (click)="reintentar()">Reintentar consulta</button>
+        </div>
+      } @else if (!medidores().length) {
+        <div class="state-panel">
+          <span class="state-icon" aria-hidden="true"><app-icon name="gauge" /></span>
+          @if (busqueda.value.trim()) {
+            <h2>No encontramos coincidencias</h2>
+            <p>Prueba con otra serie, suministro, contrato, CUEN o titular.</p>
+            <button type="button" (click)="limpiarBusqueda()">Limpiar búsqueda</button>
+          } @else {
+            <h2>No hay medidores registrados</h2>
+            <p>Registra el primer equipo y vincúlalo con un suministro activo.</p>
+            <button type="button" (click)="abrirCrear($event)">Registrar primer medidor</button>
+          }
+        </div>
+      } @else {
+        <p class="mobile-table-hint">Desliza horizontalmente para consultar todas las columnas.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Lista de medidores">
+          <table>
+            <caption class="sr-only">
+              Medidores registrados
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Medidor</th>
+                <th scope="col">Suministro</th>
+                <th scope="col">Titular</th>
+                <th scope="col">Instalación</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of medidores(); track item.id) {
+                <tr>
+                  <td>
+                    <span class="meter-identity"
+                      ><span class="row-avatar" aria-hidden="true"><app-icon name="gauge" /></span
+                      ><span
+                        ><strong>{{ item.numeroSerie }}</strong
+                        ><small>{{ etiquetaTipo(item.tipoMedicion) }}</small></span
+                      ></span
+                    >
+                  </td>
+                  <td>
+                    <span class="supply-reference"
+                      ><strong>{{ item.numeroSuministro }}</strong
+                      ><small>Contrato {{ item.numeroContrato }}</small
+                      ><small>CUEN {{ item.cuen }}</small></span
+                    >
+                  </td>
+                  <td>
+                    <span class="holder-value">{{ item.titularActual }}</span>
+                  </td>
+                  <td>
+                    <span class="date-value"
+                      ><strong>{{ item.fechaInstalacion | date: 'dd/MM/yyyy' }}</strong>
+                      @if (item.fechaRetiro) {
+                        <small>Retiro: {{ item.fechaRetiro | date: 'dd/MM/yyyy' }}</small>
+                      }
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      class="status-badge meter-status"
+                      [class.status-badge--inactive]="item.estado !== 'ACTIVO'"
+                      [class.meter-status--faulty]="item.estado === 'DEFECTUOSO'"
+                      ><i aria-hidden="true"></i>{{ etiquetaEstado(item.estado) }}</span
+                    >
+                  </td>
+                  <td>
+                    <div class="row-actions">
+                      <button
+                        type="button"
+                        class="row-action"
+                        [attr.aria-label]="'Editar medidor ' + item.numeroSerie"
+                        (click)="abrirEditar(item, $event)"
+                      >
+                        <app-icon name="edit" />Editar</button
+                      ><button
+                        type="button"
+                        class="row-action row-action--state"
+                        [attr.aria-label]="'Cambiar estado del medidor ' + item.numeroSerie"
+                        (click)="solicitarCambioEstado(item, $event)"
+                      >
+                        <app-icon name="refresh" />Cambiar estado
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="pagination-bar">
+          <p>
+            Mostrando <strong>{{ rangoInicio() }}–{{ rangoFin() }}</strong> de
+            <strong>{{ total() }}</strong>
+          </p>
+          <nav aria-label="Paginación de medidores">
+            <button type="button" [disabled]="pagina() === 1" (click)="cambiarPagina(pagina() - 1)">
+              Anterior</button
+            ><span aria-current="page">Página {{ pagina() }} de {{ totalPaginas() }}</span
+            ><button
+              type="button"
+              [disabled]="pagina() === totalPaginas()"
+              (click)="cambiarPagina(pagina() + 1)"
+            >
+              Siguiente
+            </button>
+          </nav>
+        </footer>
+      }
+    </div>
+    <aside class="module-note" aria-label="Política de medidores">
+      <app-icon name="help" />
+      <p>
+        Los medidores no se eliminan. Retirar o reemplazar conserva su relación histórica con el
+        suministro.
+      </p>
+    </aside>
+  </div>
+
+  @if (confirmacion(); as actual) {
+    <div class="dialog-backdrop" aria-hidden="true"></div>
+    <section
+      #confirmationDialog
+      class="confirmation-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="meter-confirm-title"
+      aria-describedby="meter-confirm-description"
+    >
+      <span class="confirmation-icon" aria-hidden="true"
+        ><app-icon [name]="actual.tipo === 'descartar' ? 'help' : 'gauge'"
+      /></span>
+      <h2 id="meter-confirm-title">
+        @if (actual.tipo === 'descartar') {
+          ¿Descartar los cambios?
+        } @else {
+          Cambiar estado del medidor
+        }
+      </h2>
+      <p id="meter-confirm-description">
+        @if (actual.tipo === 'descartar') {
+          La información escrita no se guardará.
+        } @else {
+          Indica el estado real de {{ actual.medidor.numeroSerie }}. El cambio quedará auditado.
+        }
+      </p>
+      @if (actual.tipo === 'estado') {
+        <div class="form-field confirmation-reason">
+          <label for="meter-state">Nuevo estado <span>*</span></label
+          ><select id="meter-state" [formControl]="estadoDestino">
+            <option value="ACTIVO">Activo</option>
+            <option value="RETIRADO">Retirado</option>
+            <option value="DEFECTUOSO">Defectuoso</option>
+            <option value="REEMPLAZADO">Reemplazado</option>
+          </select>
+        </div>
+        <div class="form-field confirmation-reason">
+          <label for="meter-state-reason">Motivo del cambio <span>*</span></label
+          ><textarea
+            id="meter-state-reason"
+            class="resize-none"
+            [formControl]="motivoEstado"
+            rows="3"
+            maxlength="250"
+            [attr.aria-invalid]="motivoEstado.invalid && motivoEstado.touched"
+            [attr.aria-describedby]="
+              motivoEstado.invalid && motivoEstado.touched ? 'meter-state-error' : null
+            "
+          ></textarea>
+          @if (motivoEstado.invalid && motivoEstado.touched) {
+            <small id="meter-state-error" class="field-error"
+              >Escribe un motivo de al menos 5 caracteres.</small
+            >
+          }
+        </div>
+      }
+      @if (mensajeConfirmacion()) {
+        <div class="dialog-error" role="alert">{{ mensajeConfirmacion() }}</div>
+      }
+      <footer>
+        <button
+          #confirmationCancel
+          type="button"
+          class="secondary-action"
+          [disabled]="procesandoEstado()"
+          (click)="cerrarConfirmacion()"
+        >
+          {{ actual.tipo === 'descartar' ? 'Seguir editando' : 'Cancelar' }}</button
+        ><button
+          type="button"
+          class="confirmation-action"
+          [class.confirmation-action--danger]="actual.tipo === 'descartar'"
+          [disabled]="procesandoEstado()"
+          [attr.aria-busy]="procesandoEstado()"
+          (click)="confirmarAccion()"
+        >
+          @if (procesandoEstado()) {
+            <span class="button-spinner" aria-hidden="true"></span>Procesando…
+          } @else if (actual.tipo === 'descartar') {
+            Descartar cambios
+          } @else {
+            Guardar estado
+          }
+        </button>
+      </footer>
+    </section>
+  }
+</section>

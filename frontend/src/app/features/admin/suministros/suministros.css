@@ -1,0 +1,75 @@
+table {
+  min-width: 78rem;
+}
+
+.supply-form-grid {
+  align-items: start;
+}
+
+.supply-identity {
+  min-width: 13rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.supply-identity .row-avatar app-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.supply-identity strong,
+.supply-identity small,
+.address-value strong,
+.address-value small,
+.tariff-value strong,
+.tariff-value small {
+  display: block;
+}
+
+.supply-identity strong,
+.address-value strong,
+.tariff-value strong {
+  color: var(--color-text);
+  font-size: 0.73rem;
+}
+
+.supply-identity small,
+.address-value small,
+.tariff-value small {
+  margin-top: 0.18rem;
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+.contract-value {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.holder-value {
+  min-width: 10rem;
+  display: block;
+  color: var(--color-text);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.address-value {
+  min-width: 17rem;
+  max-width: 22rem;
+  display: block;
+  line-height: 1.45;
+}
+
+.tariff-value {
+  min-width: 9rem;
+  display: block;
+}
+
+.status-badge--attention {
+  color: var(--color-attention);
+  background: var(--color-attention-soft);
+}

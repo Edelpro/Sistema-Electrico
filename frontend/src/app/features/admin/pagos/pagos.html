@@ -1,0 +1,247 @@
+<section class="module-page" aria-labelledby="pagos-title">
+  <header class="module-head">
+    <div>
+      <span class="eyebrow">Recaudación</span>
+      <h1 id="pagos-title">Pagos</h1>
+      <p>Consulta pagos confirmados y realiza conciliaciones manuales auditadas.</p>
+    </div>
+    <button class="primary" type="button" (click)="abrir()">
+      <app-icon name="plus" />Conciliar pago
+    </button>
+  </header>
+  @if (resultado()) {
+    <div class="notice success" role="status">
+      <app-icon name="check-circle" />{{ resultado() }}
+    </div>
+  }
+  @if (error()) {
+    <div class="notice error" role="alert">
+      {{ error() }} <button type="button" (click)="cargar()">Reintentar</button>
+    </div>
+  }
+  <div class="toolbar">
+    <label
+      ><span class="sr-only">Buscar pagos</span><app-icon name="search" /><input
+        type="search"
+        [formControl]="busqueda"
+        placeholder="Buscar referencia, proveedor o suministro"
+      />
+      @if (busqueda.value) {
+        <button
+          class="clear-search"
+          type="button"
+          aria-label="Limpiar búsqueda"
+          (click)="limpiar()"
+        >
+          <app-icon name="close" />
+        </button>
+      }</label
+    ><strong>{{ total() }} pagos</strong>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Referencia</th>
+          <th>Suministro</th>
+          <th>Proveedor</th>
+          <th>Confirmación</th>
+          <th>Monto</th>
+          <th>Estado</th>
+          <th><span class="sr-only">Acción</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr>
+            <td colspan="7" class="empty">Cargando pagos…</td>
+          </tr>
+        } @else {
+          @for (p of pagos(); track p.id) {
+            <tr>
+              <td>
+                <strong>{{ p.referencia }}</strong
+                ><small>{{ p.facturasAplicadas }} factura(s)</small>
+              </td>
+              <td>
+                {{ p.numeroSuministro }}<small>{{ p.titularActual }}</small>
+              </td>
+              <td>{{ p.proveedor }}</td>
+              <td>{{ privada(p.fechaConfirmacionUtc) }}</td>
+              <td class="money">{{ p.monto | currency: 'USD' }}</td>
+              <td>
+                <span class="status">{{ p.estado }}</span>
+              </td>
+              <td><button class="link" type="button" (click)="ver(p)">Ver detalle</button></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="empty">No hay pagos que coincidan con la búsqueda.</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+  <footer class="pager">
+    <span>Página {{ pagina() }}</span>
+    <div>
+      <button type="button" (click)="anterior()" [disabled]="pagina() === 1">Anterior</button
+      ><button type="button" (click)="siguiente()" [disabled]="pagina() * 10 >= total()">
+        Siguiente
+      </button>
+    </div>
+  </footer>
+</section>
+@if (editor()) {
+  <div class="overlay" role="presentation" (click)="cerrar()">
+    <section
+      class="drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pay-form-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">Registro auditado</span>
+          <h2 id="pay-form-title">Conciliar pago</h2>
+          <p>Esta acción no se puede eliminar. Usa el identificador real del proveedor.</p>
+        </div>
+        <button type="button" class="icon-close" (click)="cerrar()" aria-label="Cerrar">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <form [formGroup]="formulario" (ngSubmit)="conciliar()" novalidate>
+        <div class="form-grid">
+          <label for="payment-supply"
+            >Número de suministro<select id="payment-supply" formControlName="numeroSuministro">
+              <option value="">Selecciona un suministro</option>
+              @for (s of catalogos()?.suministros ?? []; track s.id) {
+                <option [value]="s.numeroSuministro">
+                  {{ s.numeroSuministro }} · {{ s.titular }}
+                </option>
+              }
+            </select></label
+          ><label>Proveedor<input formControlName="proveedor" /></label
+          ><label
+            >Evento del proveedor<input
+              formControlName="eventoProveedorId"
+              placeholder="EVT-2026-0001" /></label
+          ><label>Referencia<input formControlName="referencia" placeholder="REF-0001" /></label
+          ><label
+            >Monto recibido<input
+              type="number"
+              min="0.01"
+              step="0.01"
+              formControlName="monto" /></label
+          ><label
+            >Fecha del proveedor<input type="datetime-local" formControlName="fechaProveedorUtc"
+          /></label>
+        </div>
+        <fieldset formArrayName="asignaciones">
+          <legend>Aplicación a facturas</legend>
+          @for (a of formulario.controls.asignaciones.controls; track $index) {
+            <div class="allocation" [formGroupName]="$index">
+              <label [for]="'payment-invoice-' + $index"
+                >Número de factura<select
+                  [id]="'payment-invoice-' + $index"
+                  formControlName="numeroFactura"
+                >
+                  <option value="">Selecciona una factura pendiente</option>
+                  @for (f of facturasDisponibles(); track f.id) {
+                    <option [value]="f.numeroFactura">
+                      {{ f.numeroFactura }} · saldo {{ f.saldoPendiente | currency: 'USD' }}
+                    </option>
+                  }
+                </select></label
+              ><label
+                >Monto aplicado<input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  formControlName="montoAplicado" /></label
+              ><button
+                type="button"
+                class="danger-link"
+                (click)="quitar($index)"
+                [disabled]="formulario.controls.asignaciones.length === 1"
+              >
+                Quitar
+              </button>
+            </div>
+          }
+          <button type="button" class="secondary" (click)="agregar()">Agregar factura</button>
+        </fieldset>
+        @if (catalogosError()) {
+          <p class="form-error" role="alert">{{ catalogosError() }}</p>
+        }
+        <label
+          >Motivo de conciliación<textarea
+            rows="3"
+            formControlName="motivo"
+            placeholder="Explica la validación realizada"
+          ></textarea>
+        </label>
+        @if (mensaje()) {
+          <p class="form-error" role="alert">{{ mensaje() }}</p>
+        }
+        <footer>
+          <button type="button" class="secondary" (click)="cerrar()">Cancelar</button
+          ><button class="primary" type="submit" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Confirmar pago' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+@if (detalle(); as d) {
+  <div class="overlay" role="presentation" (click)="detalle.set(null)">
+    <section
+      class="drawer detail"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pay-detail-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">Pago confirmado</span>
+          <h2 id="pay-detail-title">{{ d.referencia }}</h2>
+          <p>{{ d.numeroSuministro }} · {{ d.titularActual }}</p>
+        </div>
+        <button class="icon-close" type="button" (click)="detalle.set(null)" aria-label="Cerrar">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <dl>
+        <div>
+          <dt>Monto</dt>
+          <dd>{{ d.monto | currency: 'USD' }}</dd>
+        </div>
+        <div>
+          <dt>Proveedor / evento</dt>
+          <dd>{{ d.proveedor }} · {{ d.eventoProveedorId }}</dd>
+        </div>
+        <div>
+          <dt>Confirmado</dt>
+          <dd>{{ privada(d.fechaConfirmacionUtc) }}</dd>
+        </div>
+        <div>
+          <dt>Motivo</dt>
+          <dd>{{ d.motivoConciliacion }}</dd>
+        </div>
+      </dl>
+      <h3>Facturas aplicadas</h3>
+      <ul class="allocations">
+        @for (a of d.asignaciones; track a.facturaId) {
+          <li>
+            <span>{{ a.numeroFactura }}</span
+            ><strong>{{ a.montoAplicado | currency: 'USD' }}</strong>
+          </li>
+        }
+      </ul>
+    </section>
+  </div>
+}

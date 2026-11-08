@@ -1,0 +1,831 @@
+<section class="users-module" aria-labelledby="billing-title">
+  <header class="module-heading">
+    <div>
+      <span class="module-kicker">GESTIÓN COMERCIAL</span>
+      <h1 id="billing-title">Facturación</h1>
+      <p>Importa y consulta documentos oficiales sin modificar sus valores de origen.</p>
+    </div>
+    <button #importButton type="button" class="create-user-button" (click)="abrirImportar($event)">
+      <app-icon name="plus" />Importar factura
+    </button>
+  </header>
+
+  @if (mensajeExito()) {
+    <div #successMessage class="success-message" role="status" tabindex="-1">
+      <app-icon name="check-circle" />
+      <span>{{ mensajeExito() }}</span>
+      <button type="button" aria-label="Cerrar mensaje" (click)="ocultarMensajeExito()">
+        <app-icon name="close" />
+      </button>
+    </div>
+  }
+
+  @if (editorAbierto()) {
+    <section class="user-form-card invoice-import-card" aria-labelledby="invoice-editor-title">
+      <header class="form-card-heading">
+        <div>
+          <span class="form-card-icon"><app-icon name="file-text" /></span>
+          <div>
+            <span class="module-kicker">IMPORTACIÓN MANUAL</span>
+            <h2 #editorHeading id="invoice-editor-title" tabindex="-1">Nueva factura</h2>
+            <p>Copia los valores recibidos del sistema comercial. Después no podrán editarse.</p>
+          </div>
+        </div>
+        <button type="button" aria-label="Cerrar formulario" (click)="solicitarCerrarEditor()">
+          <app-icon name="close" />
+        </button>
+      </header>
+
+      <form #invoiceForm [formGroup]="formulario" (ngSubmit)="importar()" novalidate>
+        @if (mensajeFormulario()) {
+          <div class="form-alert" role="alert">{{ mensajeFormulario() }}</div>
+        }
+
+        <fieldset class="invoice-section">
+          <legend>Documento y suministro</legend>
+          <div class="user-form-grid invoice-form-grid">
+            <div class="form-field">
+              <label for="invoice-supply">Número de suministro <span>*</span></label>
+              <select
+                id="invoice-supply"
+                formControlName="numeroSuministro"
+                [attr.aria-invalid]="mostrarError('numeroSuministro')"
+              >
+                <option value="">Selecciona un suministro activo</option>
+                @for (suministro of catalogos()?.suministros ?? []; track suministro.id) {
+                  <option [value]="suministro.numeroSuministro">
+                    {{ suministro.numeroSuministro }} · {{ suministro.titular }}
+                  </option>
+                }
+              </select>
+              @if (mostrarError('numeroSuministro')) {
+                <small class="field-error">Escribe un suministro válido.</small>
+              }
+            </div>
+            <div class="form-field">
+              <label for="invoice-meter">Número de medidor</label>
+              <select
+                id="invoice-meter"
+                formControlName="numeroMedidor"
+                [attr.aria-invalid]="mostrarError('numeroMedidor')"
+              >
+                <option value="">Sin medidor</option>
+                @for (medidor of medidoresDisponibles(); track medidor.id) {
+                  <option [value]="medidor.numeroSerie">
+                    {{ medidor.numeroSerie }} · {{ medidor.tipoMedicion }}
+                  </option>
+                }
+              </select>
+              @if (mostrarError('numeroMedidor')) {
+                <small class="field-error">Escribe una serie válida.</small>
+              }
+            </div>
+            @if (catalogosError()) {
+              <div class="form-alert" role="alert">{{ catalogosError() }}</div>
+            }
+            <div class="form-field">
+              <label for="invoice-source">Sistema de origen <span>*</span></label>
+              <input
+                id="invoice-source"
+                formControlName="sistemaOrigen"
+                maxlength="80"
+                [attr.aria-invalid]="mostrarError('sistemaOrigen')"
+              />
+              @if (mostrarError('sistemaOrigen')) {
+                <small class="field-error">Indica la fuente comercial.</small>
+              }
+            </div>
+            <div class="form-field">
+              <label for="invoice-external">Identificador externo <span>*</span></label>
+              <input
+                id="invoice-external"
+                formControlName="identificadorExterno"
+                maxlength="100"
+                placeholder="Evita importaciones duplicadas"
+                [attr.aria-invalid]="mostrarError('identificadorExterno')"
+              />
+              @if (mostrarError('identificadorExterno')) {
+                <small class="field-error">Escribe el identificador original.</small>
+              }
+            </div>
+            <div class="form-field">
+              <label for="invoice-number">Número de factura <span>*</span></label>
+              <input
+                id="invoice-number"
+                formControlName="numeroFactura"
+                maxlength="60"
+                [attr.aria-invalid]="mostrarError('numeroFactura')"
+              />
+              @if (mostrarError('numeroFactura')) {
+                <small class="field-error">Escribe el número del documento.</small>
+              }
+            </div>
+            <div class="form-field">
+              <label for="invoice-state">Estado <span>*</span></label>
+              <select id="invoice-state" formControlName="estado">
+                <option value="EMITIDA">Emitida</option>
+                <option value="PARCIALMENTE_PAGADA">Parcialmente pagada</option>
+                <option value="PAGADA">Pagada</option>
+                <option value="VENCIDA">Vencida</option>
+                <option value="ANULADA">Anulada</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="issuer-name">Empresa emisora <span>*</span></label>
+              <input
+                id="issuer-name"
+                formControlName="nombreEmisor"
+                maxlength="160"
+                [attr.aria-invalid]="mostrarError('nombreEmisor')"
+              />
+              @if (mostrarError('nombreEmisor')) {
+                <small class="field-error">Escribe el nombre del emisor.</small>
+              }
+            </div>
+            <div class="form-field">
+              <label for="issuer-tax-id">RUC del emisor <span>*</span></label>
+              <input
+                id="issuer-tax-id"
+                inputmode="numeric"
+                formControlName="rucEmisor"
+                maxlength="13"
+                placeholder="13 dígitos"
+                [attr.aria-invalid]="mostrarError('rucEmisor')"
+              />
+              @if (mostrarError('rucEmisor')) {
+                <small class="field-error">El RUC debe contener 13 dígitos.</small>
+              }
+            </div>
+            <div class="form-field">
+              <label for="issued-on">Fecha de emisión <span>*</span></label>
+              <input
+                id="issued-on"
+                type="date"
+                formControlName="fechaEmision"
+                [max]="fechaMaxima"
+                [attr.aria-invalid]="mostrarError('fechaEmision')"
+              />
+              @if (mostrarError('fechaEmision')) {
+                <small class="field-error">Selecciona una fecha válida.</small>
+              }
+            </div>
+            <div class="form-field">
+              <label for="due-on">Fecha de vencimiento <span>*</span></label>
+              <input
+                id="due-on"
+                type="date"
+                formControlName="fechaVencimiento"
+                [attr.aria-invalid]="mostrarError('fechaVencimiento')"
+              />
+              @if (mostrarError('fechaVencimiento')) {
+                <small class="field-error">Debe ser igual o posterior a la emisión.</small>
+              }
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="invoice-section">
+          <legend>Período, medidor y consumo</legend>
+          <div class="user-form-grid invoice-form-grid">
+            <div class="form-field">
+              <label for="period-start">Período desde <span>*</span></label>
+              <input
+                id="period-start"
+                type="date"
+                formControlName="periodoDesde"
+                [attr.aria-invalid]="mostrarError('periodoDesde')"
+              />
+            </div>
+            <div class="form-field">
+              <label for="period-end">Período hasta <span>*</span></label>
+              <input
+                id="period-end"
+                type="date"
+                formControlName="periodoHasta"
+                [attr.aria-invalid]="mostrarError('periodoHasta')"
+              />
+              @if (mostrarError('periodoHasta')) {
+                <small class="field-error">La fecha final debe ser posterior a la inicial.</small>
+              }
+            </div>
+            <div class="form-field">
+              <label for="reading-method">Método de lectura <span>*</span></label>
+              <select id="reading-method" formControlName="metodoLectura">
+                <option value="REAL">Real</option>
+                <option value="ESTIMADA">Estimada</option>
+                <option value="PROMEDIO">Promedio</option>
+                <option value="REMOTA">Remota</option>
+                <option value="AJUSTADA">Ajustada</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="previous-reading">Lectura anterior <span>*</span></label>
+              <input
+                id="previous-reading"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="lecturaAnterior"
+                [attr.aria-invalid]="mostrarError('lecturaAnterior')"
+              />
+            </div>
+            <div class="form-field">
+              <label for="current-reading">Lectura actual <span>*</span></label>
+              <input
+                id="current-reading"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="lecturaActual"
+                [attr.aria-invalid]="mostrarError('lecturaActual')"
+              />
+            </div>
+            <div class="form-field">
+              <label for="billed-consumption">Consumo facturado (kWh) <span>*</span></label>
+              <input
+                id="billed-consumption"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="consumoFacturado"
+                [attr.aria-invalid]="mostrarError('consumoFacturado')"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="invoice-section">
+          <legend>Resumen de valores recibidos</legend>
+          <div class="user-form-grid totals-grid">
+            <div class="form-field">
+              <label for="service-subtotal">Servicio eléctrico</label
+              ><input
+                id="service-subtotal"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="subtotalServicioElectrico"
+              />
+            </div>
+            <div class="form-field">
+              <label for="lighting-subtotal">Alumbrado público</label
+              ><input
+                id="lighting-subtotal"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="subtotalAlumbradoPublico"
+              />
+            </div>
+            <div class="form-field">
+              <label for="other-charges">Otros cargos</label
+              ><input
+                id="other-charges"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="otrosCargos"
+              />
+            </div>
+            <div class="form-field">
+              <label for="prior-balance">Saldo anterior</label
+              ><input
+                id="prior-balance"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="saldoAnterior"
+              />
+            </div>
+            <div class="form-field">
+              <label for="third-party">Recaudación de terceros</label
+              ><input
+                id="third-party"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="recaudacionTerceros"
+              />
+            </div>
+            <div class="form-field">
+              <label for="subsidies">Subsidios informativos</label
+              ><input
+                id="subsidies"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="subsidios"
+              />
+            </div>
+            <div class="form-field total-field">
+              <label for="invoice-total">Total de la factura <span>*</span></label
+              ><input
+                id="invoice-total"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="totalFactura"
+                [attr.aria-invalid]="mostrarError('totalFactura')"
+              />
+            </div>
+            <div class="form-field total-field">
+              <label for="amount-due">Saldo pendiente <span>*</span></label
+              ><input
+                id="amount-due"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="saldoPendiente"
+                [attr.aria-invalid]="mostrarError('saldoPendiente')"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="invoice-section lines-section">
+          <legend>Rubros originales</legend>
+          <div class="lines-heading">
+            <p>Conserva el código y la descripción exactos del documento recibido.</p>
+            <button type="button" class="secondary-action" (click)="agregarRubro()">
+              <app-icon name="plus" />Agregar rubro
+            </button>
+          </div>
+          <div formArrayName="lineas" class="invoice-lines">
+            @for (linea of lineas.controls; track linea; let indice = $index) {
+              <div class="invoice-line" [formGroupName]="indice">
+                <strong>Rubro {{ indice + 1 }}</strong>
+                <div class="line-fields">
+                  <div class="form-field">
+                    <label [for]="'line-code-' + indice">Código <span>*</span></label
+                    ><input
+                      [id]="'line-code-' + indice"
+                      formControlName="codigoOriginal"
+                      maxlength="50"
+                      [attr.aria-invalid]="mostrarErrorLinea(indice, 'codigoOriginal')"
+                    />
+                  </div>
+                  <div class="form-field line-description">
+                    <label [for]="'line-description-' + indice"
+                      >Descripción original <span>*</span></label
+                    ><input
+                      [id]="'line-description-' + indice"
+                      formControlName="descripcionOriginal"
+                      maxlength="200"
+                      [attr.aria-invalid]="mostrarErrorLinea(indice, 'descripcionOriginal')"
+                    />
+                  </div>
+                  <div class="form-field">
+                    <label [for]="'line-category-' + indice">Categoría <span>*</span></label
+                    ><select [id]="'line-category-' + indice" formControlName="categoria">
+                      <option value="ENERGIA">Energía</option>
+                      <option value="COMERCIALIZACION">Comercialización</option>
+                      <option value="ALUMBRADO_PUBLICO">Alumbrado público</option>
+                      <option value="DESCUENTO">Descuento</option>
+                      <option value="SUBSIDIO">Subsidio</option>
+                      <option value="INTERES_MORA">Interés de mora</option>
+                      <option value="SALDO_ANTERIOR">Saldo anterior</option>
+                      <option value="TERCERO">Tercero</option>
+                      <option value="FINANCIAMIENTO">Financiamiento</option>
+                      <option value="CREDITO">Crédito</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                  </div>
+                  <div class="form-field">
+                    <label [for]="'line-amount-' + indice">Monto <span>*</span></label
+                    ><input
+                      [id]="'line-amount-' + indice"
+                      type="number"
+                      step="0.01"
+                      formControlName="monto"
+                      [attr.aria-invalid]="mostrarErrorLinea(indice, 'monto')"
+                    />
+                  </div>
+                </div>
+                <div class="line-footer">
+                  <label class="checkbox-field"
+                    ><input type="checkbox" formControlName="esIngresoElectrico" />Ingreso del
+                    servicio eléctrico</label
+                  >
+                  <button
+                    type="button"
+                    class="remove-line"
+                    [disabled]="lineas.length === 1"
+                    (click)="quitarRubro(indice)"
+                  >
+                    <app-icon name="close" />Quitar rubro
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+          <p class="line-total">
+            Suma informativa de rubros:
+            <strong>{{ totalRubros() | currency: 'USD' : 'symbol' : '1.2-2' : 'es-EC' }}</strong>
+          </p>
+        </fieldset>
+
+        <div class="security-note">
+          <app-icon name="lock" />
+          <p>
+            La factura será inmutable. Si los rubros no coinciden con el total, quedará marcada para
+            revisión sin modificar el documento.
+          </p>
+        </div>
+        <footer class="form-actions">
+          <p><span>*</span> Campos obligatorios</p>
+          <div>
+            <button
+              type="button"
+              class="secondary-action"
+              [disabled]="guardando()"
+              (click)="solicitarCerrarEditor()"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="primary-action save-action"
+              [disabled]="guardando()"
+              [attr.aria-busy]="guardando()"
+            >
+              <app-icon name="check-circle" />{{ guardando() ? 'Importando…' : 'Importar factura' }}
+            </button>
+          </div>
+        </footer>
+      </form>
+    </section>
+  }
+
+  @if (cargandoDetalle()) {
+    <div class="detail-loading" role="status">
+      <span class="loading-indicator" aria-hidden="true"></span>Consultando documento…
+    </div>
+  }
+
+  @if (detalle(); as item) {
+    <section class="invoice-detail-card" aria-labelledby="invoice-detail-title">
+      <header class="detail-heading">
+        <div>
+          <span class="form-card-icon"><app-icon name="file-text" /></span>
+          <div>
+            <span class="module-kicker">DOCUMENTO DE SOLO LECTURA</span>
+            <h2 #detailHeading id="invoice-detail-title" tabindex="-1">
+              Factura {{ item.numeroFactura }}
+            </h2>
+            <p>Sincronizada {{ item.sincronizadaEnUtc | date: 'dd/MM/yyyy, HH:mm' }}</p>
+          </div>
+        </div>
+        <button type="button" aria-label="Cerrar detalle" (click)="cerrarDetalle()">
+          <app-icon name="close" />
+        </button>
+      </header>
+      @if (item.tieneDiferencia) {
+        <div class="review-warning" role="status">
+          <app-icon name="help" /><span
+            >La suma de rubros difiere del total recibido. Requiere revisión en el sistema
+            comercial.</span
+          >
+        </div>
+      }
+      <dl class="invoice-summary">
+        <div>
+          <dt>Suministro</dt>
+          <dd>{{ item.numeroSuministro }}</dd>
+          <small>Contrato {{ item.numeroContrato }} · CUEN {{ item.cuen }}</small>
+        </div>
+        <div>
+          <dt>Titular</dt>
+          <dd>{{ item.titularActual }}</dd>
+          <small>Medidor {{ item.numeroMedidor || 'No informado' }}</small>
+        </div>
+        <div>
+          <dt>Período</dt>
+          <dd>
+            {{ item.periodoDesde | date: 'dd/MM/yyyy' }} –
+            {{ item.periodoHasta | date: 'dd/MM/yyyy' }}
+          </dd>
+          <small
+            >{{ etiquetaMetodo(item.metodoLectura) }} · {{ item.consumoFacturado }}
+            {{ item.unidadConsumo }}</small
+          >
+        </div>
+        <div>
+          <dt>Saldo pendiente</dt>
+          <dd>{{ item.saldoPendiente | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC' }}</dd>
+          <small>{{ etiquetaEstado(item.estado) }}</small>
+        </div>
+      </dl>
+      <div class="detail-columns">
+        <section>
+          <h3>Lecturas</h3>
+          <dl class="value-list">
+            <div>
+              <dt>Anterior</dt>
+              <dd>{{ item.lecturaAnterior }}</dd>
+            </div>
+            <div>
+              <dt>Actual</dt>
+              <dd>{{ item.lecturaActual }}</dd>
+            </div>
+            <div>
+              <dt>Consumo facturado</dt>
+              <dd>{{ item.consumoFacturado }} {{ item.unidadConsumo }}</dd>
+            </div>
+          </dl>
+        </section>
+        <section>
+          <h3>Resumen económico</h3>
+          <dl class="value-list">
+            <div>
+              <dt>Servicio eléctrico</dt>
+              <dd>
+                {{
+                  item.subtotalServicioElectrico
+                    | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC'
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Alumbrado público</dt>
+              <dd>
+                {{
+                  item.subtotalAlumbradoPublico
+                    | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC'
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Otros cargos</dt>
+              <dd>{{ item.otrosCargos | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC' }}</dd>
+            </div>
+            <div>
+              <dt>Saldo anterior</dt>
+              <dd>
+                {{ item.saldoAnterior | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Terceros</dt>
+              <dd>
+                {{
+                  item.recaudacionTerceros | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC'
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Subsidios</dt>
+              <dd>{{ item.subsidios | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC' }}</dd>
+            </div>
+            <div class="value-total">
+              <dt>Total recibido</dt>
+              <dd>
+                {{ item.totalFactura | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC' }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+      <h3>Rubros originales</h3>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Rubros de la factura">
+        <table class="invoice-lines-table">
+          <thead>
+            <tr>
+              <th scope="col">Código</th>
+              <th scope="col">Descripción</th>
+              <th scope="col">Categoría</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (linea of item.lineas; track linea.numeroLinea) {
+              <tr>
+                <td>{{ linea.codigoOriginal }}</td>
+                <td>{{ linea.descripcionOriginal }}</td>
+                <td>{{ etiquetaCategoria(linea.categoria) }}</td>
+                <td>
+                  {{ linea.esIngresoElectrico ? 'Servicio eléctrico' : 'Tercero / informativo' }}
+                </td>
+                <td>{{ linea.monto | currency: item.moneda : 'symbol' : '1.2-2' : 'es-EC' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <div class="users-toolbar">
+    <div class="search-field">
+      <label for="invoices-search">Buscar factura</label>
+      <div class="search-control">
+        <app-icon name="search" /><input
+          #searchInput
+          id="invoices-search"
+          type="search"
+          autocomplete="off"
+          placeholder="Factura, suministro, contrato, CUEN o titular"
+          [formControl]="busqueda"
+        />
+        @if (busqueda.value) {
+          <button
+            type="button"
+            aria-label="Limpiar búsqueda de facturas"
+            (click)="limpiarBusqueda()"
+          >
+            <app-icon name="close" />
+          </button>
+        }
+      </div>
+    </div>
+    <p class="toolbar-status" role="status" aria-live="polite">
+      @if (estado() === 'cargando') {
+        Consultando facturas…
+      } @else if (estado() === 'error') {
+        La consulta no está disponible.
+      } @else if (busqueda.value.trim()) {
+        {{ total() }} {{ total() === 1 ? 'resultado' : 'resultados' }} para “{{
+          busqueda.value.trim()
+        }}”.
+      } @else {
+        Mostrando documentos importados del sistema comercial.
+      }
+    </p>
+  </div>
+
+  <div class="users-panel">
+    @if (estado() === 'cargando') {
+      <div class="state-panel" role="status" aria-live="polite">
+        <span class="loading-indicator" aria-hidden="true"></span>
+        <h2>Consultando facturas</h2>
+        <p>Espera mientras se obtiene la información.</p>
+      </div>
+    } @else if (estado() === 'error') {
+      <div class="state-panel state-panel--error" role="alert">
+        <span class="state-icon" aria-hidden="true"><app-icon name="file-text" /></span>
+        <h2>No se pudo cargar el módulo</h2>
+        <p>{{ mensajeError() }}</p>
+        <button type="button" (click)="reintentar()">Reintentar consulta</button>
+      </div>
+    } @else if (!facturas().length) {
+      <div class="state-panel">
+        <span class="state-icon" aria-hidden="true"><app-icon name="file-text" /></span>
+        @if (busqueda.value.trim()) {
+          <h2>No encontramos coincidencias</h2>
+          <p>Prueba con otra factura, suministro, contrato, CUEN o titular.</p>
+          <button type="button" (click)="limpiarBusqueda()">Limpiar búsqueda</button>
+        } @else {
+          <h2>No hay facturas importadas</h2>
+          <p>Importa el primer documento recibido del sistema comercial.</p>
+          <button type="button" (click)="abrirImportar($event)">Importar primera factura</button>
+        }
+      </div>
+    } @else {
+      <p class="mobile-table-hint">Desliza horizontalmente para consultar todas las columnas.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Lista de facturas">
+        <table class="invoices-table">
+          <caption class="sr-only">
+            Facturas importadas
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Factura</th>
+              <th scope="col">Suministro</th>
+              <th scope="col">Período</th>
+              <th scope="col">Consumo</th>
+              <th scope="col">Total / saldo</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of facturas(); track item.id) {
+              <tr>
+                <td>
+                  <span class="invoice-identity"
+                    ><span class="row-avatar" aria-hidden="true"><app-icon name="file-text" /></span
+                    ><span
+                      ><strong>{{ item.numeroFactura }}</strong
+                      ><small>Emitida {{ item.fechaEmision | date: 'dd/MM/yyyy' }}</small></span
+                    ></span
+                  >
+                </td>
+                <td>
+                  <span class="supply-reference"
+                    ><strong>{{ item.numeroSuministro }}</strong
+                    ><small>Contrato {{ item.numeroContrato }}</small
+                    ><small>{{ item.titularActual }}</small></span
+                  >
+                </td>
+                <td>
+                  <span class="date-value"
+                    ><strong>{{ item.periodoDesde | date: 'dd/MM/yyyy' }}</strong
+                    ><small>hasta {{ item.periodoHasta | date: 'dd/MM/yyyy' }}</small
+                    ><small>Vence {{ item.fechaVencimiento | date: 'dd/MM/yyyy' }}</small></span
+                  >
+                </td>
+                <td>
+                  <strong class="consumption-value">{{ item.consumoFacturado }} kWh</strong>
+                </td>
+                <td>
+                  <span class="money-value"
+                    ><strong>{{
+                      item.totalFactura | currency: 'USD' : 'symbol' : '1.2-2' : 'es-EC'
+                    }}</strong
+                    ><small
+                      >Saldo
+                      {{
+                        item.saldoPendiente | currency: 'USD' : 'symbol' : '1.2-2' : 'es-EC'
+                      }}</small
+                    >
+                    @if (item.tieneDiferencia) {
+                      <small class="review-label">Revisar suma</small>
+                    }
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="status-badge invoice-status"
+                    [class.status-badge--inactive]="item.estado === 'ANULADA'"
+                    [class.invoice-status--paid]="item.estado === 'PAGADA'"
+                    [class.invoice-status--overdue]="item.estado === 'VENCIDA'"
+                    ><i aria-hidden="true"></i>{{ etiquetaEstado(item.estado) }}</span
+                  >
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <button
+                      type="button"
+                      class="row-action"
+                      [attr.aria-label]="'Ver detalle de factura ' + item.numeroFactura"
+                      (click)="abrirDetalle(item, $event)"
+                    >
+                      <app-icon name="eye" />Ver detalle
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer class="pagination-bar">
+        <p>
+          Mostrando <strong>{{ rangoInicio() }}–{{ rangoFin() }}</strong> de
+          <strong>{{ total() }}</strong>
+        </p>
+        <nav aria-label="Paginación de facturas">
+          <button type="button" [disabled]="pagina() === 1" (click)="cambiarPagina(pagina() - 1)">
+            Anterior</button
+          ><span aria-current="page">Página {{ pagina() }} de {{ totalPaginas() }}</span
+          ><button
+            type="button"
+            [disabled]="pagina() === totalPaginas()"
+            (click)="cambiarPagina(pagina() + 1)"
+          >
+            Siguiente
+          </button>
+        </nav>
+      </footer>
+    }
+  </div>
+  <aside class="module-note" aria-label="Política de facturación">
+    <app-icon name="help" />
+    <p>
+      El SGSE conserva las facturas como documentos de solo lectura. Una corrección debe llegar como
+      un nuevo evento del sistema comercial.
+    </p>
+  </aside>
+
+  @if (confirmarDescarte()) {
+    <div class="dialog-backdrop" aria-hidden="true"></div>
+    <section
+      #discardDialog
+      class="confirmation-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="discard-invoice-title"
+      aria-describedby="discard-invoice-description"
+    >
+      <span class="confirmation-icon" aria-hidden="true"><app-icon name="help" /></span>
+      <h2 id="discard-invoice-title">¿Descartar la importación?</h2>
+      <p id="discard-invoice-description">Los datos escritos no se guardarán.</p>
+      <footer>
+        <button
+          #discardCancel
+          type="button"
+          class="secondary-action"
+          (click)="cerrarConfirmacion()"
+        >
+          Seguir editando</button
+        ><button
+          type="button"
+          class="confirmation-action confirmation-action--danger"
+          (click)="descartarCambios()"
+        >
+          Descartar cambios
+        </button>
+      </footer>
+    </section>
+  }
+</section>

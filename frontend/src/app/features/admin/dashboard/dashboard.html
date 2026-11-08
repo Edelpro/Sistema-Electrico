@@ -1,0 +1,465 @@
+<div class="dashboard-shell">
+  @if (menuAbierto()) {
+    <button
+      type="button"
+      class="sidebar-backdrop"
+      aria-label="Cerrar menú de navegación"
+      (click)="cerrarMenu()"
+    ></button>
+  }
+
+  <aside
+    #sidebar
+    class="sidebar"
+    [class.sidebar--open]="menuAbierto()"
+    [attr.role]="menuAbierto() ? 'dialog' : null"
+    [attr.aria-modal]="menuAbierto() ? 'true' : null"
+    [attr.aria-label]="menuAbierto() ? 'Menú principal' : null"
+  >
+    <div class="sidebar-header">
+      <a class="brand" routerLink="/admin" aria-label="SGSE, ir al inicio">
+        <span class="brand-mark" aria-hidden="true">
+          <app-icon name="bolt" />
+        </span>
+        <span>
+          <strong>SGSE</strong>
+          <small>Servicio eléctrico</small>
+        </span>
+      </a>
+
+      <button type="button" class="sidebar-close" aria-label="Cerrar menú" (click)="cerrarMenu()">
+        <app-icon name="close" />
+      </button>
+    </div>
+
+    <nav class="primary-nav" aria-label="Navegación principal">
+      @for (item of navigation; track item.label) {
+        @if (item.available) {
+          <a
+            class="nav-item"
+            [class.nav-item--active]="vistaActual === item.view"
+            [routerLink]="item.route"
+            [attr.aria-current]="vistaActual === item.view ? 'page' : null"
+            (click)="cerrarMenu(false)"
+          >
+            <app-icon [name]="item.icon" />
+            <span>{{ item.label }}</span>
+          </a>
+        } @else {
+          <span
+            class="nav-item nav-item--pending"
+            [attr.aria-label]="item.label + ', módulo pendiente de desarrollo'"
+          >
+            <app-icon [name]="item.icon" />
+            <span>{{ item.label }}</span>
+            <small>Pendiente</small>
+          </span>
+        }
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user" aria-label="Sesión actual">
+        <span class="avatar avatar--small">{{ iniciales }}</span>
+        <span>
+          <strong>{{ nombreUsuario }}</strong>
+          <small>Administrador</small>
+        </span>
+      </div>
+      <button type="button" class="sidebar-logout" (click)="cerrarSesion()">
+        <app-icon name="logout" />
+        Cerrar sesión
+      </button>
+    </div>
+  </aside>
+
+  <div class="workspace">
+    <header class="topbar">
+      <button
+        #menuTrigger
+        type="button"
+        class="icon-button menu-trigger"
+        aria-label="Abrir menú de navegación"
+        [attr.aria-expanded]="menuAbierto()"
+        (click)="abrirMenu()"
+      >
+        <app-icon name="menu" />
+      </button>
+
+      @if (vistaActual === 'inicio') {
+        <form class="search" role="search" (ngSubmit)="buscar()" novalidate>
+          <app-icon name="search" />
+          <input
+            #searchInput
+            type="search"
+            name="consulta"
+            aria-label="Buscar cliente, suministro u orden"
+            placeholder="Buscar cliente, suministro u orden"
+            [ngModel]="consulta()"
+            (ngModelChange)="actualizarConsulta($event)"
+          />
+          @if (consulta()) {
+            <button type="button" aria-label="Limpiar búsqueda" (click)="limpiarBusqueda()">
+              <app-icon name="close" />
+            </button>
+          }
+        </form>
+      } @else {
+        <div class="topbar-context" aria-label="Módulo actual">
+          <app-icon [name]="iconoModulo" />
+          <span
+            >Administración <strong>/ {{ tituloModulo }}</strong></span
+          >
+        </div>
+      }
+
+      <div class="topbar-actions">
+        <button
+          type="button"
+          class="theme-toggle"
+          [attr.aria-label]="theme.dark() ? 'Activar tema claro' : 'Activar tema oscuro'"
+          [attr.aria-pressed]="theme.dark()"
+          (click)="theme.toggle()"
+        >
+          <app-icon [name]="theme.dark() ? 'moon' : 'sun'" />
+          <span class="toggle-track" aria-hidden="true">
+            <span></span>
+          </span>
+        </button>
+
+        <div class="profile">
+          <button
+            #profileTrigger
+            type="button"
+            class="profile-trigger"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="perfilAbierto()"
+            (click)="alternarPerfil($event)"
+          >
+            <span class="avatar">{{ iniciales }}</span>
+            <span class="profile-copy">
+              <strong>{{ nombreUsuario }}</strong>
+              <small>Administrador</small>
+            </span>
+            <app-icon name="chevron-down" />
+          </button>
+
+          @if (perfilAbierto()) {
+            <div #profileMenu class="profile-menu" role="menu">
+              <div>
+                <strong>{{ nombreUsuario }}</strong>
+                <small>Sesión de administrador</small>
+              </div>
+              <button #logoutButton type="button" role="menuitem" (click)="cerrarSesion()">
+                <app-icon name="logout" />
+                Cerrar sesión
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard-main" id="contenido-principal">
+      @if (vistaActual === 'inicio') {
+        <div class="page-heading">
+          <div>
+            <h1>Resumen operativo</h1>
+            <p>Supervisa el punto de partida del sistema eléctrico.</p>
+          </div>
+          <button
+            type="button"
+            class="help-button"
+            [attr.aria-expanded]="ayudaVisible()"
+            aria-controls="dashboard-help"
+            (click)="alternarAyuda()"
+          >
+            <app-icon name="help" />
+            Centro de ayuda
+          </button>
+        </div>
+
+        @if (mensajeBusqueda()) {
+          <div class="search-status" role="status">
+            <app-icon name="search" />
+            <span>{{ mensajeBusqueda() }}</span>
+            @if (consulta()) {
+              <button type="button" (click)="limpiarBusqueda()">Limpiar búsqueda</button>
+            }
+          </div>
+          @if (resultadosBusqueda().length) {
+            <div class="search-results" aria-label="Resultados de búsqueda">
+              @for (resultado of resultadosBusqueda(); track resultado.ruta) {
+                <button type="button" (click)="irAResultado(resultado.ruta)">
+                  <span>{{ resultado.tipo }}</span><strong>{{ resultado.titulo }}</strong><small>{{ resultado.subtitulo }}</small><app-icon name="arrow-right" />
+                </button>
+              }
+            </div>
+          }
+        }
+
+        @if (ayudaVisible()) {
+          <section id="dashboard-help" class="help-panel" aria-labelledby="help-title">
+            <app-icon name="help" />
+            <div>
+              <h2 id="help-title">Lectura del panel</h2>
+              <p>
+                Los indicadores se calculan con la información real de clientes, órdenes, cuadrillas,
+                facturas y auditoría. Configura las políticas SLA antes de conciliar nuevos pagos.
+              </p>
+            </div>
+            <button type="button" aria-label="Cerrar ayuda" (click)="alternarAyuda()">
+              <app-icon name="close" />
+            </button>
+          </section>
+        }
+
+        @if (cargandoPanel()) { <div class="panel-state" role="status">Actualizando indicadores…</div> }
+        @if (errorPanel()) { <div class="panel-state panel-state--error" role="alert">{{ errorPanel() }}<button type="button" (click)="cargarPanel()">Reintentar</button></div> }
+
+        <div class="overview-grid">
+          <section class="priority-panel" aria-labelledby="priority-title">
+            <header class="panel-heading">
+              <span class="panel-icon panel-icon--attention" aria-hidden="true">
+                <app-icon name="bolt" />
+              </span>
+              <div>
+                <h2 id="priority-title">Reconexiones prioritarias</h2>
+                <p>Órdenes pagadas y listas para asignar a cuadrillas.</p>
+              </div>
+            </header>
+
+            @if (panel()?.reconexionesPrioritarias?.length) {
+              <div class="priority-list">
+                @for (orden of panel()!.reconexionesPrioritarias; track orden.id) {
+                  <button type="button" (click)="irAResultado('/admin/ordenes?q=' + orden.codigo)">
+                    <span class="priority-rank"><app-icon name="bolt" /></span>
+                    <span><strong>{{ orden.codigo }}</strong><small>{{ orden.numeroSuministro }} · {{ orden.titular }}</small></span>
+                    <span><strong>{{ orden.estado.replaceAll('_', ' ') }}</strong><small>{{ fechaLocal(orden.fechaLimiteSlaUtc) }}</small></span>
+                    <app-icon name="arrow-right" />
+                  </button>
+                }
+              </div>
+            } @else {
+              <div class="flow-empty">
+              <svg
+                class="flow-line"
+                viewBox="0 0 820 90"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <path d="M0 45c72 0 77 33 145 33s77-45 144-45h244c69 0 75 45 144 45s74-33 143-33" />
+                <circle cx="145" cy="78" r="6" />
+                <circle cx="289" cy="33" r="6" />
+                <circle cx="533" cy="33" r="6" />
+                <circle cx="677" cy="78" r="6" />
+              </svg>
+
+              <div class="empty-symbol" aria-hidden="true">
+                <app-icon name="clipboard" />
+                <span><app-icon name="bolt" /></span>
+              </div>
+              <h3>No hay reconexiones pendientes</h3>
+              <p>Las órdenes pagadas y listas para asignar aparecerán aquí.</p>
+              </div>
+            }
+
+            <dl class="metric-strip">
+              <div>
+                <span class="metric-icon metric-icon--blue"><app-icon name="users" /></span>
+                <dt>Clientes activos</dt>
+                <dd>{{ panel()?.indicadores?.clientesActivos ?? 0 }} <small>Registrados y activos</small></dd>
+              </div>
+              <div>
+                <span class="metric-icon metric-icon--orange"><app-icon name="clipboard" /></span>
+                <dt>Órdenes pendientes</dt>
+                <dd>{{ panel()?.indicadores?.ordenesPendientes ?? 0 }} <small>En proceso</small></dd>
+              </div>
+              <div>
+                <span class="metric-icon metric-icon--cyan"><app-icon name="users" /></span>
+                <dt>Cuadrillas disponibles</dt>
+                <dd>{{ panel()?.indicadores?.cuadrillasDisponibles ?? 0 }} <small>Listas para asignar</small></dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="integration-panel" aria-labelledby="integration-title">
+            <header class="panel-heading">
+              <span class="panel-icon" aria-hidden="true">
+                <app-icon name="tower" />
+              </span>
+              <div>
+                <h2 id="integration-title">Estado de integración</h2>
+                <p>Disponibilidad de los módulos actuales.</p>
+              </div>
+            </header>
+
+            <div class="integration-visual" aria-hidden="true">
+              <app-icon name="tower" />
+            </div>
+            <h3>Operación conectada</h3>
+            <p class="integration-summary">Datos actualizados desde la API del sistema.</p>
+
+            <ul class="integration-list">
+              <li>
+                <span><i class="status-dot status-dot--ready"></i>Autenticación</span>
+                <strong>Configurada</strong>
+              </li>
+              <li>
+                <span><i class="status-dot status-dot--ready"></i>Datos del panel</span>
+                <strong>Conectados</strong>
+              </li>
+              <li>
+                <span><i class="status-dot" [class.status-dot--ready]="(panel()?.indicadores?.slaVencidos ?? 0) === 0" [class.status-dot--pending]="(panel()?.indicadores?.slaVencidos ?? 0) > 0"></i>Control SLA</span>
+                <strong>{{ panel()?.indicadores?.slaVencidos ?? 0 }} vencidas · {{ panel()?.indicadores?.slaPorVencer ?? 0 }} por vencer</strong>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <section class="consumption-panel" aria-labelledby="consumption-title">
+          <header class="consumption-heading">
+            <div class="panel-heading">
+              <span class="panel-icon panel-icon--chart" aria-hidden="true">
+                <app-icon name="bar-chart" />
+              </span>
+              <div>
+                <h2 id="consumption-title">Consumo y gasto mensual</h2>
+                <p>Comparación del valor facturado y la energía consumida durante seis meses.</p>
+              </div>
+            </div>
+            <span class="demo-badge">Datos de facturación</span>
+          </header>
+
+          <figure class="consumption-figure">
+            <div class="chart-scale" aria-hidden="true">
+              <span>$30</span>
+              <span>$20</span>
+              <span>$10</span>
+              <span>$0</span>
+            </div>
+
+            <ol class="bar-chart" aria-label="Consumo y gasto mensual de energía">
+              @for (registro of historialConsumo(); track registro.mes) {
+                <li
+                  [attr.aria-label]="
+                    registro.mes +
+                    ': ' +
+                    registro.consumoKwh +
+                    ' kilovatios hora, valor facturado ' +
+                    registro.valorTexto
+                  "
+                >
+                  <span class="bar-value">{{ registro.valorTexto }}</span>
+                  <span class="bar-track" aria-hidden="true">
+                    <span class="bar-fill" [style.height.%]="registro.altura"></span>
+                  </span>
+                  <strong>{{ registro.mes }}</strong>
+                  <small>{{ registro.consumoKwh }} kWh</small>
+                </li>
+              }
+            </ol>
+
+            <figcaption>
+              Suma mensual de consumo y valores facturados registrados en la API.
+            </figcaption>
+          </figure>
+          @if (!historialConsumo().length && !cargandoPanel()) { <div class="chart-empty">Aún no hay facturas suficientes para construir el gráfico.</div> }
+        </section>
+
+        <section class="activity-panel" aria-labelledby="activity-title">
+          <header>
+            <span class="panel-icon" aria-hidden="true"><app-icon name="activity" /></span>
+            <div>
+              <h2 id="activity-title">Actividad reciente</h2>
+              <p>Acciones registradas por el sistema.</p>
+            </div>
+          </header>
+
+          <div class="activity-table" role="region" aria-label="Actividad reciente">
+            <div class="activity-columns" aria-hidden="true">
+              <span>Fecha y hora</span>
+              <span>Tipo</span>
+              <span>Descripción</span>
+              <span>Estado</span>
+              <span>Usuario</span>
+            </div>
+            @for (a of panel()?.actividadReciente ?? []; track a.id) {
+              <div class="activity-row">
+                <span>{{ fechaLocal(a.fechaUtc) }}</span><span>{{ a.entidad }}</span><span><strong>{{ a.accion.replaceAll('_', ' ') }}</strong><small>{{ a.motivo || a.entidad + ' #' + a.entidadId }}</small></span><span>Registrada</span><span>{{ a.actor }}</span>
+              </div>
+            } @empty {
+              <div class="activity-empty"><span class="empty-activity-icon" aria-hidden="true"><app-icon name="file-text" /></span><h3>No hay actividad reciente</h3><p>Las acciones realizadas en el sistema aparecerán aquí.</p></div>
+            }
+          </div>
+        </section>
+      } @else if (vistaActual === 'usuarios') {
+        @defer {
+          <app-admin-usuarios />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de usuarios…</div>
+        }
+      } @else if (vistaActual === 'clientes') {
+        @defer {
+          <app-admin-clientes />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de clientes…</div>
+        }
+      } @else if (vistaActual === 'suministros') {
+        @defer {
+          <app-admin-suministros />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de suministros…</div>
+        }
+      } @else if (vistaActual === 'medidores') {
+        @defer {
+          <app-admin-medidores />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de medidores…</div>
+        }
+      } @else if (vistaActual === 'facturacion') {
+        @defer {
+          <app-admin-facturacion />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de facturación…</div>
+        }
+      } @else if (vistaActual === 'pagos') {
+        @defer {
+          <app-admin-pagos />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de pagos…</div>
+        }
+      } @else if (vistaActual === 'ordenes') {
+        @defer {
+          <app-admin-ordenes />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de órdenes…</div>
+        }
+      } @else if (vistaActual === 'cuadrillas') {
+        @defer {
+          <app-admin-cuadrillas />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de cuadrillas…</div>
+        }
+      } @else if (vistaActual === 'reclamos') {
+        @defer {
+          <app-admin-reclamos />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando módulo de reclamos…</div>
+        }
+      } @else if (vistaActual === 'auditoria') {
+        @defer {
+          <app-admin-auditoria />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando auditoría y reportes…</div>
+        }
+      } @else {
+        @defer {
+          <app-admin-configuracion />
+        } @placeholder {
+          <div class="module-route-loading" role="status">Preparando configuración…</div>
+        }
+      }
+    </main>
+  </div>
+</div>

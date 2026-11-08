@@ -1,0 +1,363 @@
+<section class="module-page" aria-labelledby="claims-title">
+  <header class="module-head">
+    <div>
+      <span class="eyebrow">Atención y seguimiento</span>
+      <h1 id="claims-title">Reclamos</h1>
+      <p>Registra casos, vincula pagos u órdenes y conserva una resolución verificable.</p>
+    </div>
+    <button class="primary" type="button" (click)="abrir()">
+      <app-icon name="plus" />Nuevo reclamo
+    </button>
+  </header>
+  @if (exito()) {
+    <div class="notice success" role="status">
+      <app-icon name="check-circle" />{{ exito()
+      }}<button class="notice-close" type="button" (click)="exito.set('')">Cerrar</button>
+    </div>
+  }
+  @if (error()) {
+    <div class="notice error" role="alert">
+      {{ error() }}<button type="button" (click)="error.set('')">Cerrar</button>
+    </div>
+  }
+  <div class="toolbar">
+    <label
+      ><span class="sr-only">Buscar reclamos</span><app-icon name="search" /><input
+        #searchInput
+        type="search"
+        [formControl]="busqueda"
+        placeholder="Buscar caso, suministro, cliente o descripción"
+      />
+      @if (busqueda.value) {
+        <button
+          class="clear-search"
+          type="button"
+          aria-label="Limpiar búsqueda"
+          (click)="limpiar()"
+        >
+          <app-icon name="close" />
+        </button>
+      }</label
+    ><strong>{{ total() }} reclamos</strong>
+  </div>
+  <div class="table-wrap">
+    <table aria-label="Listado de reclamos">
+      <thead>
+        <tr>
+          <th scope="col">Caso</th>
+          <th scope="col">Suministro</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Prioridad</th>
+          <th scope="col">Creación</th>
+          <th scope="col">Asignación</th>
+          <th scope="col">Estado</th>
+          <th scope="col"><span class="sr-only">Acción</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr>
+            <td class="empty" colspan="8" role="status">Cargando reclamos…</td>
+          </tr>
+        } @else {
+          @for (r of items(); track r.id) {
+            <tr>
+              <td>
+                <strong>{{ r.numeroCaso }}</strong>
+              </td>
+              <td>
+                {{ r.numeroSuministro }}<small>{{ r.titularActual }}</small>
+              </td>
+              <td>{{ r.tipo.replaceAll('_', ' ') }}</td>
+              <td>
+                <span class="priority" [class.critical]="r.prioridad === 'CRITICA'">{{
+                  r.prioridad
+                }}</span>
+              </td>
+              <td>{{ fecha(r.fechaCreacionUtc) }}</td>
+              <td>{{ r.asignadoA || 'Sin asignar' }}</td>
+              <td>
+                <span class="status">{{ r.estado.replaceAll('_', ' ') }}</span>
+              </td>
+              <td><button class="link" type="button" (click)="ver(r)">Gestionar</button></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td class="empty" colspan="8">
+                @if (busqueda.value) {
+                  No hay reclamos que coincidan.
+                  <button class="link" type="button" (click)="limpiar()">Limpiar búsqueda</button>
+                } @else {
+                  Aún no hay reclamos registrados.
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+  <footer class="pager" aria-label="Paginación de reclamos">
+    <span>Página {{ pagina() }}</span>
+    <div>
+      <button type="button" (click)="anterior()" [disabled]="pagina() === 1">Anterior</button
+      ><button type="button" (click)="siguiente()" [disabled]="pagina() * 10 >= total()">
+        Siguiente
+      </button>
+    </div>
+  </footer>
+</section>
+
+@if (editor()) {
+  <div class="overlay" role="presentation" (click)="editor.set(false)">
+    <section
+      class="drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="claim-form-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">Caso de soporte</span>
+          <h2 id="claim-form-title">Nuevo reclamo</h2>
+          <p>Vincula únicamente identificadores que pertenezcan al mismo suministro.</p>
+        </div>
+        <button class="icon-close" type="button" aria-label="Cerrar" (click)="editor.set(false)">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <form [formGroup]="form" (ngSubmit)="crear()" novalidate>
+        <div class="form-grid">
+          <label for="claim-supply"
+            >Suministro<select
+              id="claim-supply"
+              formControlName="numeroSuministro"
+              [attr.aria-invalid]="invalido('numeroSuministro')"
+              [attr.aria-describedby]="invalido('numeroSuministro') ? 'claim-supply-error' : null"
+            ><option value="">Selecciona un suministro</option>@for (s of catalogos()?.suministros ?? []; track s.id) {<option [value]="s.numeroSuministro">{{ s.numeroSuministro }} · {{ s.titular }}</option>}</select>
+            @if (invalido('numeroSuministro')) {
+              <small id="claim-supply-error" class="field-error"
+                >Indica el número de suministro.</small
+              >
+            }
+          </label>
+          <label for="claim-type"
+            >Tipo<select id="claim-type" formControlName="tipo">
+              <option value="PAGO_NO_REFLEJADO">Pago no reflejado</option>
+              <option value="RECONEXION_DEMORADA">Reconexión demorada</option>
+              <option value="FACTURACION">Facturación</option>
+              <option value="OTRO">Otro</option>
+            </select></label
+          ><label for="claim-priority"
+            >Prioridad<select id="claim-priority" formControlName="prioridad">
+              <option value="NORMAL">Normal</option>
+              <option value="ALTA">Alta</option>
+              <option value="CRITICA">Crítica</option>
+            </select></label
+          ><label for="claim-payment"
+            >Pago opcional<select id="claim-payment" formControlName="pagoId">
+              <option [ngValue]="null">Sin pago vinculado</option>
+              @for (p of pagosDisponibles(); track p.id) {
+                <option [ngValue]="p.id">
+                  {{ p.referencia }} · {{ p.monto | currency: 'USD' }}
+                </option>
+              }
+            </select></label
+          ><label for="claim-order"
+            >Orden opcional<select id="claim-order" formControlName="ordenTrabajoId">
+              <option [ngValue]="null">Sin orden vinculada</option>
+              @for (o of ordenesDisponibles(); track o.id) {
+                <option [ngValue]="o.id">{{ o.codigo }} · {{ o.tipo.replaceAll('_', ' ') }}</option>
+              }
+            </select></label
+          ><label for="claim-owner"
+            >Asignar a administrador opcional<select
+              id="claim-owner"
+              formControlName="correoAsignado"
+            ><option value="">Sin asignar</option>@for (a of catalogos()?.administradores ?? []; track a.id) {<option [value]="a.correo">{{ a.nombre }} · {{ a.correo }}</option>}</select></label>
+        </div>
+        <label for="claim-description"
+          >Descripción<textarea
+            id="claim-description"
+            rows="5"
+            formControlName="descripcion"
+            [attr.aria-invalid]="invalido('descripcion')"
+            [attr.aria-describedby]="invalido('descripcion') ? 'claim-description-error' : null"
+          ></textarea>
+          @if (invalido('descripcion')) {
+            <small id="claim-description-error" class="field-error"
+              >Describe el problema en al menos 10 caracteres.</small
+            >
+          }
+        </label>
+        @if (editorError()) {
+          <p class="form-error" role="alert">{{ editorError() }}</p>
+        }
+        <footer>
+          <button class="secondary" type="button" (click)="editor.set(false)">Cancelar</button
+          ><button
+            class="primary"
+            type="submit"
+            [disabled]="guardando()"
+            [attr.aria-busy]="guardando()"
+          >
+            {{ guardando() ? 'Registrando…' : 'Registrar reclamo' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (detalle(); as r) {
+  <div class="overlay" role="presentation" (click)="detalle.set(null)">
+    <section
+      class="drawer detail"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="claim-detail-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">{{ r.tipo.replaceAll('_', ' ') }}</span>
+          <h2 id="claim-detail-title">{{ r.numeroCaso }}</h2>
+          <p>{{ r.numeroSuministro }} · {{ r.titularActual }}</p>
+        </div>
+        <button class="icon-close" type="button" aria-label="Cerrar" (click)="detalle.set(null)">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <div class="order-summary">
+        <span class="status">{{ r.estado.replaceAll('_', ' ') }}</span
+        ><span class="priority">{{ r.prioridad }}</span
+        ><strong>{{ r.asignadoA || 'Sin asignar' }}</strong
+        ><small>{{ fecha(r.fechaCreacionUtc) }}</small>
+      </div>
+      <p class="case-copy">{{ r.descripcion }}</p>
+      <div class="case-links">
+        @if (r.pagoId) {
+          <span>Pago #{{ r.pagoId }}</span>
+        }
+        @if (r.ordenTrabajoId) {
+          <span>Orden #{{ r.ordenTrabajoId }}</span>
+        }
+      </div>
+      @if (r.resolucion) {
+        <section class="resolution">
+          <h3>Resolución</h3>
+          <p>{{ r.resolucion }}</p>
+        </section>
+      }
+      @if (opciones(r.estado).length) {
+        <div class="actions">
+          <button class="primary" type="button" (click)="abrirGestion()">Gestionar reclamo</button>
+        </div>
+      }
+      @if (gestion()) {
+        <form class="management" [formGroup]="gestionForm" (ngSubmit)="guardarGestion()" novalidate>
+          <div class="form-grid">
+            <label for="claim-next"
+              >Nuevo estado<select
+                id="claim-next"
+                formControlName="estadoNuevo"
+                [attr.aria-invalid]="
+                  gestionForm.controls.estadoNuevo.invalid &&
+                  gestionForm.controls.estadoNuevo.touched
+                "
+                [attr.aria-describedby]="
+                  gestionForm.controls.estadoNuevo.invalid &&
+                  gestionForm.controls.estadoNuevo.touched
+                    ? 'claim-next-error'
+                    : null
+                "
+              >
+                <option value="">Selecciona</option>
+                @for (e of opciones(r.estado); track e) {
+                  <option [value]="e">{{ e.replaceAll('_', ' ') }}</option>
+                }
+              </select>
+              @if (
+                gestionForm.controls.estadoNuevo.invalid && gestionForm.controls.estadoNuevo.touched
+              ) {
+                <small id="claim-next-error" class="field-error"
+                  >Selecciona el siguiente estado.</small
+                >
+              }</label
+            ><label for="claim-assignee"
+              >Asignar a administrador<select
+                id="claim-assignee"
+                formControlName="correoAsignado"
+                [attr.aria-invalid]="
+                  gestionForm.controls.correoAsignado.invalid &&
+                  gestionForm.controls.correoAsignado.touched
+                "
+                [attr.aria-describedby]="
+                  gestionForm.controls.correoAsignado.invalid &&
+                  gestionForm.controls.correoAsignado.touched
+                    ? 'claim-assignee-error'
+                    : null
+                "
+              ><option value="">Sin asignar</option>@for (a of catalogos()?.administradores ?? []; track a.id) {<option [value]="a.correo">{{ a.nombre }} · {{ a.correo }}</option>}</select>
+              @if (
+                gestionForm.controls.correoAsignado.invalid &&
+                gestionForm.controls.correoAsignado.touched
+              ) {
+                <small id="claim-assignee-error" class="field-error"
+                  >Escribe un correo válido.</small
+                >
+              }
+            </label>
+          </div>
+          <label for="claim-resolution"
+            >Resolución<textarea
+              id="claim-resolution"
+              rows="4"
+              formControlName="resolucion"
+            ></textarea></label
+          ><label for="claim-reason"
+            >Motivo del cambio<textarea
+              id="claim-reason"
+              rows="3"
+              formControlName="motivo"
+              [attr.aria-invalid]="
+                gestionForm.controls.motivo.invalid && gestionForm.controls.motivo.touched
+              "
+              [attr.aria-describedby]="
+                gestionForm.controls.motivo.invalid && gestionForm.controls.motivo.touched
+                  ? 'claim-reason-error'
+                  : null
+              "
+            ></textarea>
+            @if (gestionForm.controls.motivo.invalid && gestionForm.controls.motivo.touched) {
+              <small id="claim-reason-error" class="field-error"
+                >Explica el cambio en al menos 5 caracteres.</small
+              >
+            }
+          </label>
+          @if (gestionError()) {
+            <p class="form-error" role="alert">{{ gestionError() }}</p>
+          }
+          <footer>
+            <button class="secondary" type="button" (click)="gestion.set(false)">Cancelar</button
+            ><button class="primary" type="submit" [disabled]="guardando()">Guardar gestión</button>
+          </footer>
+        </form>
+      }
+      <h3>Historial</h3>
+      <ol class="timeline">
+        @for (h of r.historial; track h.fechaUtc) {
+          <li>
+            <span></span>
+            <div>
+              <strong>{{ h.estadoAnterior || 'INICIO' }} → {{ h.estadoNuevo }}</strong
+              ><small>{{ fecha(h.fechaUtc) }} · {{ h.actor || 'Sistema' }}</small>
+              <p>{{ h.motivo }}</p>
+            </div>
+          </li>
+        }
+      </ol>
+    </section>
+  </div>
+}

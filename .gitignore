@@ -1,0 +1,47 @@
+# Angular / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/coverage/
+npm-debug.log*
+
+# .NET
+backend/bin/
+backend/obj/
+backend/TestResults/
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+
+# Databases and backups
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+*.bak
+
+# Generated reports and temporary files
+coverage/
+artifacts/
+output/
+*.tmp
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

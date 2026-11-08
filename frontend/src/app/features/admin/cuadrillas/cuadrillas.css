@@ -1,0 +1,71 @@
+@import '../pagos/pagos.css';
+.capacity {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 8rem;
+}
+.capacity-bar {
+  height: 0.4rem;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-strong);
+  overflow: hidden;
+}
+.capacity-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+.member-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.member-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.member-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.member-list small {
+  display: block;
+  color: var(--color-text-muted);
+}
+.confirm-card {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-dialog) + 1);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--color-overlay);
+}
+.confirm-card section {
+  width: min(28rem, 100%);
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-popover);
+}
+.confirm-card footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+@media (max-width: 720px) {
+  .member-form {
+    grid-template-columns: 1fr;
+  }
+}

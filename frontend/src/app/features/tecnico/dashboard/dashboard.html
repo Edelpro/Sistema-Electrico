@@ -1,0 +1,524 @@
+<div class="role-shell">
+  @if (menuAbierto()) {
+    <button
+      class="menu-backdrop"
+      type="button"
+      aria-label="Cerrar menú"
+      (click)="menuAbierto.set(false)"
+    ></button>
+  }
+  <aside class="role-sidebar" [class.role-sidebar--open]="menuAbierto()">
+    <div class="brand-row">
+      <span class="brand-mark"><app-icon name="bolt" /></span>
+      <span><strong>SGSE</strong><small>Trabajo en campo</small></span>
+      <button
+        class="mobile-close"
+        type="button"
+        aria-label="Cerrar menú"
+        (click)="menuAbierto.set(false)"
+      >
+        <app-icon name="close" />
+      </button>
+    </div>
+    <nav aria-label="Navegación del técnico">
+      <button class="nav-link nav-link--active" type="button" (click)="menuAbierto.set(false)">
+        <app-icon name="clipboard" /><span>Mis órdenes</span>
+      </button>
+    </nav>
+    <div class="scope-note">
+      <app-icon name="lock" />
+      <p>
+        <strong>Acceso limitado</strong
+        ><span>Solo ves órdenes asignadas a ti o a tu cuadrilla.</span>
+      </p>
+    </div>
+    <div class="sidebar-account">
+      <span class="avatar">{{ iniciales }}</span>
+      <p>
+        <strong>{{ nombreUsuario }}</strong
+        ><small>Técnico</small>
+      </p>
+    </div>
+    <button class="logout-button" type="button" (click)="cerrarSesion()">
+      <app-icon name="logout" />Cerrar sesión
+    </button>
+  </aside>
+
+  <section class="role-workspace">
+    <header class="role-topbar">
+      <button
+        class="icon-button menu-button"
+        type="button"
+        aria-label="Abrir menú"
+        (click)="menuAbierto.set(true)"
+      >
+        <app-icon name="menu" />
+      </button>
+      <div><small>Portal técnico</small><strong>Órdenes de campo</strong></div>
+      <button
+        class="theme-button"
+        type="button"
+        [attr.aria-label]="theme.dark() ? 'Activar tema claro' : 'Activar tema oscuro'"
+        (click)="theme.toggle()"
+      >
+        <app-icon [name]="theme.dark() ? 'moon' : 'sun'" />
+      </button>
+    </header>
+
+    <main class="role-main">
+      <header class="page-title">
+        <div>
+          <span class="eyebrow">Jornada operativa</span>
+          <h1>Mis órdenes asignadas</h1>
+          <p>
+            Actualiza el trabajo paso a paso y registra la evidencia desde el lugar del servicio.
+          </p>
+        </div>
+        <button class="secondary-button" type="button" [disabled]="cargando()" (click)="cargar()">
+          <app-icon name="refresh" />Actualizar
+        </button>
+      </header>
+
+      @if (error()) {
+        <div class="alert alert--error" role="alert">
+          <app-icon name="help" /><span>{{ error() }}</span
+          ><button type="button" aria-label="Cerrar mensaje" (click)="error.set('')">
+            <app-icon name="close" />
+          </button>
+        </div>
+      }
+      @if (exito()) {
+        <div class="alert alert--success" role="status">
+          <app-icon name="check-circle" /><span>{{ exito() }}</span
+          ><button type="button" aria-label="Cerrar mensaje" (click)="exito.set('')">
+            <app-icon name="close" />
+          </button>
+        </div>
+      }
+
+      @if (resumen(); as datos) {
+        <section class="metric-grid" aria-label="Resumen de órdenes">
+          <article>
+            <span>Total asignadas</span><strong>{{ datos.total }}</strong
+            ><app-icon name="clipboard" />
+          </article>
+          <article>
+            <span>Por iniciar</span><strong>{{ datos.pendientes }}</strong
+            ><app-icon name="activity" />
+          </article>
+          <article>
+            <span>En curso</span><strong>{{ datos.enCurso }}</strong
+            ><app-icon name="tower" />
+          </article>
+          <article class="metric-critical">
+            <span>Críticas</span><strong>{{ datos.criticas }}</strong
+            ><app-icon name="bolt" />
+          </article>
+        </section>
+      }
+
+      <section class="content-card">
+        <form class="filter-bar" novalidate [formGroup]="filtros" (ngSubmit)="cargar()">
+          <label class="search-field"
+            ><app-icon name="search" /><span class="sr-only">Buscar orden</span
+            ><input
+              formControlName="buscar"
+              type="search"
+              placeholder="Código, suministro, dirección o causa"
+          /></label>
+          <label
+            ><span class="sr-only">Estado</span
+            ><select formControlName="estado">
+              <option value="TODOS">Todos los estados</option>
+              <option value="ASIGNADA">Asignada</option>
+              <option value="ACEPTADA">Aceptada</option>
+              <option value="EN_RUTA">En ruta</option>
+              <option value="EN_SITIO">En sitio</option>
+              <option value="EJECUTADA">Ejecutada</option>
+              <option value="FALLIDA">Fallida</option>
+              <option value="REPROGRAMADA">Reprogramada</option>
+            </select></label
+          >
+          <button class="primary-button" type="submit">Aplicar filtros</button>
+          @if (filtros.controls.buscar.value || filtros.controls.estado.value !== 'TODOS') {
+            <button class="text-button" type="button" (click)="limpiarFiltros()">Limpiar</button>
+          }
+        </form>
+
+        @if (cargando()) {
+          <div class="state-panel" role="status">
+            <span class="spinner"></span>
+            <h2>Cargando jornada</h2>
+            <p>Consultando tus asignaciones seguras…</p>
+          </div>
+        } @else if (resumen()?.ordenes?.length) {
+          <div class="orders-list">
+            @for (orden of resumen()!.ordenes; track orden.id) {
+              <article
+                class="order-card"
+                [class.order-card--critical]="orden.prioridad === 'CRITICA'"
+              >
+                <div class="order-main">
+                  <div class="order-code">
+                    <span>{{ orden.tipo }}</span
+                    ><strong>{{ orden.codigo }}</strong>
+                  </div>
+                  <span class="status" [ngClass]="claseEstado(orden.estado)">{{
+                    etiqueta(orden.estado)
+                  }}</span>
+                </div>
+                <div class="order-address">
+                  <app-icon name="plug" />
+                  <div>
+                    <strong>{{ orden.direccionServicio }}</strong
+                    ><span>{{ orden.numeroSuministro }} · {{ orden.zona }}</span>
+                  </div>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Causa</dt>
+                    <dd>{{ etiqueta(orden.causa) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Prioridad</dt>
+                    <dd>{{ etiqueta(orden.prioridad) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Límite SLA</dt>
+                    <dd>
+                      {{
+                        orden.fechaLimiteSlaUtc
+                          ? (orden.fechaLimiteSlaUtc | date: 'dd/MM/yyyy HH:mm')
+                          : 'Sin límite definido'
+                      }}
+                    </dd>
+                  </div>
+                </dl>
+                <div class="order-footer">
+                  <span [class.evidence-ok]="orden.tieneEvidencia"
+                    ><app-icon [name]="orden.tieneEvidencia ? 'check-circle' : 'file-text'" />{{
+                      orden.tieneEvidencia ? 'Evidencia registrada' : 'Sin evidencia'
+                    }}</span
+                  ><button class="primary-button" type="button" (click)="abrirOrden(orden, $event)">
+                    Gestionar <app-icon name="arrow-right" />
+                  </button>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="state-panel">
+            <app-icon name="check-circle" />
+            <h2>No hay órdenes con estos filtros</h2>
+            <p>Prueba con otro estado o actualiza la jornada.</p>
+            <button class="secondary-button" type="button" (click)="limpiarFiltros()">
+              Ver todas
+            </button>
+          </div>
+        }
+      </section>
+    </main>
+  </section>
+</div>
+
+@if (detalle(); as item) {
+  <button
+    class="drawer-backdrop"
+    type="button"
+    aria-label="Cerrar detalle"
+    (click)="cerrarDetalle()"
+  ></button>
+  <aside
+    class="detail-drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-orden"
+    (keydown)="atraparFoco($event)"
+  >
+    <header>
+      <div>
+        <span class="eyebrow">{{ item.orden.tipo }} · {{ item.orden.numeroSuministro }}</span>
+        <h2 id="titulo-orden">{{ item.orden.codigo }}</h2>
+      </div>
+      <button #cerrarDetalleButton type="button" aria-label="Cerrar" (click)="cerrarDetalle()">
+        <app-icon name="close" />
+      </button>
+    </header>
+    <div class="drawer-content">
+      @if (panelError()) {
+        <div class="alert alert--error" role="alert">
+          <app-icon name="help" /><span>{{ panelError() }}</span>
+          <button type="button" aria-label="Cerrar mensaje" (click)="panelError.set('')">
+            <app-icon name="close" />
+          </button>
+        </div>
+      }
+      <section class="detail-hero">
+        <span class="status" [ngClass]="claseEstado(item.orden.estado)">{{
+          etiqueta(item.orden.estado)
+        }}</span>
+        <h3>{{ item.orden.direccionServicio }}</h3>
+        <p>{{ item.titular }} · {{ item.orden.zona }}</p>
+      </section>
+
+      @if (item.orden.estado === 'EN_SITIO') {
+        <button
+          class="evidence-callout"
+          type="button"
+          (click)="panelEvidencia.set(!panelEvidencia())"
+        >
+          <app-icon name="file-text" /><span
+            ><strong>Registrar evidencia de campo</strong
+            ><small>Fotografía, lectura y ubicación del trabajo</small></span
+          ><app-icon name="arrow-right" />
+        </button>
+      }
+
+      @if (panelEvidencia()) {
+        <form
+          class="drawer-form"
+          novalidate
+          [attr.aria-busy]="guardando()"
+          [formGroup]="evidencia"
+          (ngSubmit)="guardarEvidencia()"
+        >
+          <div class="section-heading">
+            <h3>Evidencia de campo</h3>
+            <p>JPG, PNG o WebP. Máximo 5 MB.</p>
+          </div>
+          <label class="full-field"
+            ><span>Fotografía *</span
+            ><input
+              #archivoInput
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              [attr.aria-invalid]="archivoError() ? true : null"
+              [attr.aria-describedby]="archivoError() ? 'archivo-error' : null"
+              (change)="seleccionarArchivo($event)"
+            /><small>{{ archivo()?.name || 'Ningún archivo seleccionado' }}</small>
+            @if (archivoError()) {
+              <small id="archivo-error" class="field-error">{{ archivoError() }}</small>
+            }
+          </label>
+          <label
+            ><span>Fecha y hora *</span
+            ><input formControlName="fechaDispositivoUtc" type="datetime-local"
+          /></label>
+          <label
+            ><span>Lectura del medidor</span
+            ><input formControlName="lecturaMedidor" type="number" min="0" step="0.01"
+          /></label>
+          <div class="location-row full-field">
+            <button
+              class="secondary-button"
+              type="button"
+              [disabled]="ubicando()"
+              (click)="capturarUbicacion()"
+            >
+              <app-icon name="tower" />{{
+                ubicando() ? 'Obteniendo…' : 'Usar mi ubicación'
+              }}</button
+            ><small>La ubicación es interna y no se muestra al cliente.</small>
+          </div>
+          <label
+            ><span>Latitud</span
+            ><input
+              formControlName="latitud"
+              type="number"
+              min="-90"
+              max="90"
+              step="0.000001" /></label
+          ><label
+            ><span>Longitud</span
+            ><input formControlName="longitud" type="number" min="-180" max="180" step="0.000001"
+          /></label>
+          <label class="full-field"
+            ><span>Observación *</span
+            ><textarea
+              #observacionEvidencia
+              id="evidencia-observacion"
+              formControlName="observacion"
+              rows="3"
+              maxlength="1000"
+              [attr.aria-invalid]="
+                evidencia.controls.observacion.touched && evidencia.controls.observacion.invalid
+              "
+              [attr.aria-describedby]="
+                evidencia.controls.observacion.touched && evidencia.controls.observacion.invalid
+                  ? 'evidencia-observacion-error'
+                  : null
+              "
+              placeholder="Describe qué se verificó y qué trabajo se realizó"
+            ></textarea>
+            @if (evidencia.controls.observacion.touched && evidencia.controls.observacion.invalid) {
+              <small id="evidencia-observacion-error" class="field-error"
+                >Escribe al menos 5 caracteres.</small
+              >
+            }
+          </label>
+          <div class="form-actions full-field">
+            <button class="secondary-button" type="button" (click)="panelEvidencia.set(false)">
+              Cancelar</button
+            ><button class="primary-button" type="submit" [disabled]="guardando()">
+              {{ guardando() ? 'Guardando…' : 'Guardar evidencia' }}
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (item.transicionesPermitidas.length) {
+        <form
+          class="drawer-form"
+          novalidate
+          [attr.aria-busy]="guardando()"
+          [formGroup]="transicion"
+          (ngSubmit)="guardarTransicion()"
+        >
+          <div class="section-heading full-field">
+            <h3>Actualizar estado</h3>
+            <p>Solo se muestran transiciones válidas para esta etapa.</p>
+          </div>
+          <label class="full-field"
+            ><span>Nuevo estado *</span
+            ><select formControlName="estadoNuevo">
+              @for (estado of item.transicionesPermitidas; track estado) {
+                <option [value]="estado">{{ etiqueta(estado) }}</option>
+              }
+            </select></label
+          >
+          <label class="full-field"
+            ><span>Motivo *</span
+            ><input
+              #motivoInput
+              id="transicion-motivo"
+              formControlName="motivo"
+              type="text"
+              maxlength="300"
+              [attr.aria-invalid]="
+                transicion.controls.motivo.touched && transicion.controls.motivo.invalid
+              "
+              [attr.aria-describedby]="
+                transicion.controls.motivo.touched && transicion.controls.motivo.invalid
+                  ? 'transicion-motivo-error'
+                  : null
+              "
+              placeholder="Ej. Trabajo iniciado en sitio"
+            />
+            @if (transicion.controls.motivo.touched && transicion.controls.motivo.invalid) {
+              <small id="transicion-motivo-error" class="field-error"
+                >Escribe al menos 5 caracteres.</small
+              >
+            }
+          </label>
+          <label class="full-field"
+            ><span
+              >Observación
+              @if (transicion.controls.estadoNuevo.value === 'FALLIDA') {
+                *
+              }</span
+            ><textarea
+              #observacionTransicion
+              id="transicion-observacion"
+              formControlName="observacion"
+              rows="3"
+              maxlength="500"
+              [attr.aria-invalid]="
+                transicion.controls.observacion.touched && transicion.controls.observacion.invalid
+              "
+              [attr.aria-describedby]="
+                transicion.controls.observacion.touched && transicion.controls.observacion.invalid
+                  ? 'transicion-observacion-error'
+                  : null
+              "
+            ></textarea>
+            @if (
+              transicion.controls.observacion.touched && transicion.controls.observacion.invalid
+            ) {
+              <small id="transicion-observacion-error" class="field-error"
+                >Describe la novedad con al menos 5 caracteres.</small
+              >
+            }
+          </label>
+          @if (transicion.controls.estadoNuevo.value === 'EJECUTADA' && !item.evidencias.length) {
+            <p class="inline-warning full-field">
+              <app-icon name="help" />Primero registra la evidencia fotográfica.
+            </p>
+          }
+          <div class="form-actions full-field">
+            <button
+              class="primary-button"
+              type="submit"
+              [disabled]="
+                guardando() ||
+                (transicion.controls.estadoNuevo.value === 'EJECUTADA' && !item.evidencias.length)
+              "
+            >
+              {{ guardando() ? 'Actualizando…' : 'Confirmar estado' }}
+            </button>
+          </div>
+        </form>
+      } @else {
+        <div class="closed-note">
+          <app-icon name="check-circle" />
+          <p>
+            <strong>Sin acciones pendientes</strong
+            ><span>Esta orden no admite más cambios desde el portal técnico.</span>
+          </p>
+        </div>
+      }
+
+      @if (item.evidencias.length) {
+        <section class="evidence-history" aria-labelledby="titulo-evidencias">
+          <div class="section-heading">
+            <h3 id="titulo-evidencias">Evidencias registradas</h3>
+            <p>Archivos protegidos de esta orden</p>
+          </div>
+          <ul>
+            @for (evidenciaItem of item.evidencias; track evidenciaItem.id) {
+              <li>
+                <app-icon name="file-text" />
+                <div>
+                  <strong>{{ evidenciaItem.nombreArchivo }}</strong>
+                  <small
+                    >{{ evidenciaItem.fechaServidorUtc | date: 'dd/MM/yyyy HH:mm' }} ·
+                    {{ evidenciaItem.observacion }}</small
+                  >
+                </div>
+                <button
+                  class="text-button"
+                  type="button"
+                  [disabled]="descargandoEvidencia() !== null"
+                  (click)="descargarEvidencia(evidenciaItem.id, evidenciaItem.nombreArchivo)"
+                >
+                  {{ descargandoEvidencia() === evidenciaItem.id ? 'Descargando…' : 'Descargar' }}
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <section class="timeline-section">
+        <div class="section-heading">
+          <h3>Historial</h3>
+          <p>Trazabilidad de la orden</p>
+        </div>
+        <ol class="timeline">
+          @for (evento of item.historial; track evento.fechaUtc + evento.estadoNuevo) {
+            <li>
+              <span></span>
+              <div>
+                <strong>{{ etiqueta(evento.estadoNuevo) }}</strong
+                ><small
+                  >{{ evento.fechaUtc | date: 'dd/MM/yyyy HH:mm' }} ·
+                  {{ evento.actor || 'Sistema' }}</small
+                >
+                <p>{{ evento.motivo }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+    </div>
+  </aside>
+}

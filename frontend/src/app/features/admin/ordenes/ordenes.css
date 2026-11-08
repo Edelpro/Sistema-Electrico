@@ -1,0 +1,71 @@
+@import '../pagos/pagos.css';
+select {
+  border: 1px solid var(--border, #d0d5dd);
+  border-radius: 0.65rem;
+  padding: 0.72rem 0.8rem;
+  background: var(--surface, #fff);
+  color: inherit;
+  font: inherit;
+}
+.priority {
+  font-weight: 800;
+  color: #b54708;
+}
+.priority.critical {
+  color: #b42318;
+}
+.order-summary {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 1rem;
+  background: var(--surface-subtle, #f8fafc);
+  border-radius: 0.8rem;
+}
+.order-summary small {
+  grid-column: 1/-1;
+  color: #667085;
+}
+.actions {
+  display: flex;
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+.action-form {
+  background: var(--surface-subtle, #f8fafc);
+  padding: 1rem;
+  border-radius: 0.8rem;
+}
+.hint {
+  font-size: 0.85rem;
+  padding: 0.8rem;
+  background: #fffaeb;
+  color: #93370d;
+  border-radius: 0.6rem;
+}
+.timeline {
+  list-style: none;
+  padding: 0;
+}
+.timeline li {
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  gap: 0.8rem;
+  padding-bottom: 1rem;
+}
+.timeline li > span {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #0f766e;
+  margin-top: 0.25rem;
+}
+.timeline small {
+  display: block;
+  color: #667085;
+  margin: 0.25rem 0;
+}
+.timeline p {
+  margin: 0.25rem 0 !important;
+}

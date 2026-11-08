@@ -1,0 +1,365 @@
+<section class="module-page" aria-labelledby="crews-title">
+  <header class="module-head">
+    <div>
+      <span class="eyebrow">Despacho territorial</span>
+      <h1 id="crews-title">Cuadrillas</h1>
+      <p>Administra equipos habilitados, cobertura, capacidad y disponibilidad.</p>
+    </div>
+    <button class="primary" type="button" (click)="abrir()">
+      <app-icon name="plus" />Nueva cuadrilla
+    </button>
+  </header>
+  @if (exito()) {
+    <div class="notice success" role="status">
+      <app-icon name="check-circle" />{{ exito()
+      }}<button class="notice-close" type="button" (click)="exito.set('')">Cerrar</button>
+    </div>
+  }
+  @if (error()) {
+    <div class="notice error" role="alert">
+      {{ error() }}<button type="button" (click)="error.set('')">Cerrar</button>
+    </div>
+  }
+  <div class="toolbar">
+    <label
+      ><span class="sr-only">Buscar cuadrillas</span><app-icon name="search" /><input
+        #searchInput
+        type="search"
+        [formControl]="busqueda"
+        placeholder="Buscar código, nombre, zona o técnico"
+      />
+      @if (busqueda.value) {
+        <button
+          class="clear-search"
+          type="button"
+          aria-label="Limpiar búsqueda"
+          (click)="limpiar()"
+        >
+          <app-icon name="close" />
+        </button>
+      }</label
+    ><strong>{{ total() }} cuadrillas</strong>
+  </div>
+  <div class="table-wrap">
+    <table aria-label="Listado de cuadrillas">
+      <thead>
+        <tr>
+          <th scope="col">Cuadrilla</th>
+          <th scope="col">Zona</th>
+          <th scope="col">Capacidad</th>
+          <th scope="col">Órdenes activas</th>
+          <th scope="col">Estado</th>
+          <th scope="col"><span class="sr-only">Acción</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (cargando()) {
+          <tr>
+            <td colspan="6" class="empty" role="status">Cargando cuadrillas…</td>
+          </tr>
+        } @else {
+          @for (c of items(); track c.id) {
+            <tr>
+              <td>
+                <strong>{{ c.codigo }}</strong
+                ><small>{{ c.nombre }}</small>
+              </td>
+              <td>{{ c.zona }}</td>
+              <td>
+                <div class="capacity">
+                  <span>{{ c.miembrosActivos }} de {{ c.capacidadMaxima }}</span
+                  ><span class="capacity-bar" aria-hidden="true"
+                    ><span [style.width.%]="(c.miembrosActivos / c.capacidadMaxima) * 100"></span
+                  ></span>
+                </div>
+              </td>
+              <td>{{ c.ordenesActivas }}</td>
+              <td>
+                <span class="status" [class.status--muted]="!c.activa">{{ c.estado }}</span>
+              </td>
+              <td><button class="link" type="button" (click)="ver(c)">Gestionar</button></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="empty">
+                @if (busqueda.value) {
+                  No hay cuadrillas que coincidan.
+                  <button class="link" type="button" (click)="limpiar()">Limpiar búsqueda</button>
+                } @else {
+                  Aún no existen cuadrillas. Crea la primera para organizar la asignación de
+                  órdenes.
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+  <footer class="pager" aria-label="Paginación de cuadrillas">
+    <span>Página {{ pagina() }}</span>
+    <div>
+      <button type="button" (click)="anterior()" [disabled]="pagina() === 1">Anterior</button
+      ><button type="button" (click)="siguiente()" [disabled]="pagina() * 10 >= total()">
+        Siguiente
+      </button>
+    </div>
+  </footer>
+</section>
+
+@if (editor()) {
+  <div class="overlay" role="presentation" (click)="editor.set(false)">
+    <section
+      class="drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="crew-form-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">{{
+            editando() ? 'Actualización auditada' : 'Registro operativo'
+          }}</span>
+          <h2 id="crew-form-title">{{ editando() ? 'Editar cuadrilla' : 'Nueva cuadrilla' }}</h2>
+          <p>No incluye nómina, flota ni contratación.</p>
+        </div>
+        <button class="icon-close" type="button" aria-label="Cerrar" (click)="editor.set(false)">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <div class="form-grid">
+          <label for="crew-code"
+            >Código<input
+              id="crew-code"
+              formControlName="codigo"
+              [attr.aria-invalid]="invalido('codigo')"
+              [attr.aria-describedby]="invalido('codigo') ? 'crew-code-error' : null"
+            />
+            @if (invalido('codigo')) {
+              <small id="crew-code-error" class="field-error"
+                >Usa entre 3 y 30 letras, números o guiones.</small
+              >
+            }
+          </label>
+          <label for="crew-name"
+            >Nombre<input
+              id="crew-name"
+              formControlName="nombre"
+              [attr.aria-invalid]="invalido('nombre')"
+              [attr.aria-describedby]="invalido('nombre') ? 'crew-name-error' : null"
+            />
+            @if (invalido('nombre')) {
+              <small id="crew-name-error" class="field-error"
+                >Escribe un nombre de al menos 3 caracteres.</small
+              >
+            }
+          </label>
+          <label for="crew-zone"
+            >Zona de cobertura<input
+              id="crew-zone"
+              formControlName="zona"
+              [attr.aria-invalid]="invalido('zona')"
+              [attr.aria-describedby]="invalido('zona') ? 'crew-zone-error' : null"
+            />
+            @if (invalido('zona')) {
+              <small id="crew-zone-error" class="field-error">Indica la zona atendida.</small>
+            }
+          </label>
+          <label for="crew-capacity"
+            >Capacidad máxima<input
+              id="crew-capacity"
+              type="number"
+              min="1"
+              max="20"
+              formControlName="capacidadMaxima"
+              [attr.aria-invalid]="invalido('capacidadMaxima')"
+              [attr.aria-describedby]="invalido('capacidadMaxima') ? 'crew-capacity-error' : null"
+            />
+            @if (invalido('capacidadMaxima')) {
+              <small id="crew-capacity-error" class="field-error"
+                >La capacidad debe estar entre 1 y 20.</small
+              >
+            }
+          </label>
+          <label for="crew-state"
+            >Estado<select id="crew-state" formControlName="estado">
+              <option value="DISPONIBLE">Disponible</option>
+              <option value="OCUPADA">Ocupada</option>
+              <option value="FUERA_SERVICIO">Fuera de servicio</option>
+              <option value="INACTIVA">Inactiva</option>
+            </select></label
+          >
+        </div>
+        <label for="crew-notes"
+          >Observaciones<textarea
+            id="crew-notes"
+            rows="3"
+            formControlName="observaciones"
+          ></textarea></label
+        ><label for="crew-reason"
+          >Motivo del registro o cambio<textarea
+            id="crew-reason"
+            rows="3"
+            formControlName="motivo"
+            [attr.aria-invalid]="invalido('motivo')"
+            [attr.aria-describedby]="invalido('motivo') ? 'crew-reason-error' : null"
+          ></textarea>
+          @if (invalido('motivo')) {
+            <small id="crew-reason-error" class="field-error"
+              >Explica el motivo en al menos 5 caracteres.</small
+            >
+          }
+        </label>
+        @if (editorError()) {
+          <p class="form-error" role="alert">{{ editorError() }}</p>
+        }
+        <footer>
+          <button class="secondary" type="button" (click)="editor.set(false)">Cancelar</button
+          ><button
+            class="primary"
+            type="submit"
+            [disabled]="guardando()"
+            [attr.aria-busy]="guardando()"
+          >
+            {{ guardando() ? 'Guardando…' : editando() ? 'Guardar cambios' : 'Crear cuadrilla' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (detalle(); as d) {
+  <div class="overlay" role="presentation" (click)="detalle.set(null)">
+    <section
+      class="drawer detail"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="crew-detail-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">{{ d.zona }}</span>
+          <h2 id="crew-detail-title">{{ d.codigo }} · {{ d.nombre }}</h2>
+          <p>
+            {{ d.miembrosActivos }} de {{ d.capacidadMaxima }} integrantes ·
+            {{ d.ordenesActivas }} órdenes activas
+          </p>
+        </div>
+        <button class="icon-close" type="button" aria-label="Cerrar" (click)="detalle.set(null)">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <div class="actions">
+        <button class="secondary" type="button" (click)="editarDetalle()">Editar datos</button>
+        @if (d.activa) {
+          <button
+            class="warning-button"
+            type="button"
+            (click)="cambiarEstado('INACTIVA')"
+            [disabled]="guardando()"
+          >
+            Desactivar
+          </button>
+        } @else {
+          <button
+            class="primary"
+            type="button"
+            (click)="cambiarEstado('DISPONIBLE')"
+            [disabled]="guardando()"
+          >
+            Activar
+          </button>
+        }
+      </div>
+      <h3>Integrantes activos</h3>
+      <form class="member-form" [formGroup]="miembroForm" (ngSubmit)="agregarMiembro()" novalidate>
+        <label for="member-email"
+          >Técnico<select
+            id="member-email"
+            formControlName="correoTecnico"
+            [attr.aria-invalid]="
+              miembroForm.controls.correoTecnico.invalid &&
+              miembroForm.controls.correoTecnico.touched
+            "
+            [attr.aria-describedby]="
+              miembroForm.controls.correoTecnico.invalid &&
+              miembroForm.controls.correoTecnico.touched
+                ? 'member-email-error'
+                : null
+            "
+          ><option value="">Selecciona un técnico</option>@for (t of tecnicos(); track t.id) {<option [value]="t.correo">{{ t.nombre }} · {{ t.correo }}</option>}</select>
+          @if (
+            miembroForm.controls.correoTecnico.invalid && miembroForm.controls.correoTecnico.touched
+          ) {
+            <small id="member-email-error" class="field-error"
+              >Selecciona un técnico activo.</small
+            >
+          }</label
+        ><label for="member-reason"
+          >Motivo<input
+            id="member-reason"
+            formControlName="motivo"
+            [attr.aria-invalid]="
+              miembroForm.controls.motivo.invalid && miembroForm.controls.motivo.touched
+            "
+            [attr.aria-describedby]="
+              miembroForm.controls.motivo.invalid && miembroForm.controls.motivo.touched
+                ? 'member-reason-error'
+                : null
+            "
+          />
+          @if (miembroForm.controls.motivo.invalid && miembroForm.controls.motivo.touched) {
+            <small id="member-reason-error" class="field-error"
+              >Explica el motivo en al menos 5 caracteres.</small
+            >
+          }</label
+        ><button class="primary" type="submit" [disabled]="guardando() || !d.activa">
+          Agregar
+        </button>
+      </form>
+      @if (miembroError()) {
+        <p class="form-error" role="alert">{{ miembroError() }}</p>
+      }
+      <ul class="member-list">
+        @for (m of d.miembros; track m.id) {
+          <li>
+            <span
+              ><strong>{{ m.nombre }}</strong
+              ><small>{{ m.correo }}</small></span
+            ><button class="danger-link" type="button" (click)="confirmacion.set(m)">
+              Retirar
+            </button>
+          </li>
+        } @empty {
+          <li class="empty">La cuadrilla todavía no tiene técnicos.</li>
+        }
+      </ul>
+    </section>
+  </div>
+}
+
+@if (confirmacion(); as m) {
+  <div class="confirm-card">
+    <section
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="remove-member-title"
+      aria-describedby="remove-member-copy"
+    >
+      <h2 id="remove-member-title">Retirar técnico</h2>
+      <p id="remove-member-copy">
+        {{ m.nombre }} dejará de pertenecer a esta cuadrilla. El historial se conservará.
+      </p>
+      <footer>
+        <button class="secondary" type="button" (click)="confirmacion.set(null)">Conservar</button
+        ><button class="warning-button" type="button" (click)="retirar()" [disabled]="guardando()">
+          Retirar técnico
+        </button>
+      </footer>
+    </section>
+  </div>
+}

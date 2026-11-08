@@ -1,0 +1,730 @@
+<div class="role-shell user-shell">
+  @if (menuAbierto()) {
+    <button
+      class="menu-backdrop"
+      type="button"
+      aria-label="Cerrar menú"
+      (click)="menuAbierto.set(false)"
+    ></button>
+  }
+  <aside class="role-sidebar" [class.role-sidebar--open]="menuAbierto()">
+    <div class="brand-row">
+      <span class="brand-mark"><app-icon name="bolt" /></span
+      ><span><strong>SGSE</strong><small>Portal del cliente</small></span
+      ><button
+        class="mobile-close"
+        type="button"
+        aria-label="Cerrar menú"
+        (click)="menuAbierto.set(false)"
+      >
+        <app-icon name="close" />
+      </button>
+    </div>
+    <nav aria-label="Navegación del usuario">
+      @for (item of navegacion; track item.vista) {
+        <button
+          class="nav-link"
+          [class.nav-link--active]="vista() === item.vista"
+          type="button"
+          (click)="cambiarVista(item.vista)"
+        >
+          <app-icon [name]="item.icono" /><span>{{ item.etiqueta }}</span>
+          @if (item.vista === 'reclamos' && detalle()?.suministro?.reclamosAbiertos) {
+            <small class="nav-count">{{ detalle()!.suministro.reclamosAbiertos }}</small>
+          }
+        </button>
+      }
+    </nav>
+    <div class="scope-note">
+      <app-icon name="lock" />
+      <p>
+        <strong>Tu información está protegida</strong
+        ><span>Solo puedes consultar los suministros vinculados a tu cuenta.</span>
+      </p>
+    </div>
+    <div class="sidebar-account">
+      <span class="avatar">{{ iniciales }}</span>
+      <p>
+        <strong>{{ nombreUsuario }}</strong
+        ><small>Usuario</small>
+      </p>
+    </div>
+    <button class="logout-button" type="button" (click)="cerrarSesion()">
+      <app-icon name="logout" />Cerrar sesión
+    </button>
+  </aside>
+
+  <section class="role-workspace">
+    <header class="role-topbar">
+      <button
+        class="icon-button menu-button"
+        type="button"
+        aria-label="Abrir menú"
+        (click)="menuAbierto.set(true)"
+      >
+        <app-icon name="menu" />
+      </button>
+      <div>
+        <small>Portal del cliente</small><strong>{{ resumen()?.cliente || 'Mi servicio' }}</strong>
+      </div>
+      <button
+        class="theme-button"
+        type="button"
+        [attr.aria-label]="theme.dark() ? 'Activar tema claro' : 'Activar tema oscuro'"
+        (click)="theme.toggle()"
+      >
+        <app-icon [name]="theme.dark() ? 'moon' : 'sun'" />
+      </button>
+    </header>
+
+    <main class="role-main">
+      <header class="page-title">
+        <div>
+          <span class="eyebrow">Información de tu cuenta</span>
+          <h1>
+            {{
+              vista() === 'resumen'
+                ? 'Mi servicio eléctrico'
+                : vista() === 'seguimiento'
+                  ? 'Seguimiento del servicio'
+                  : (vista() | titlecase)
+            }}
+          </h1>
+          <p>
+            Consulta información oficial; los cambios operativos los realiza personal autorizado.
+          </p>
+        </div>
+        @if (resumen()?.suministros?.length) {
+          <label class="supply-picker"
+            ><span>Suministro</span
+            ><select [value]="suministroId()" (change)="cambiarSuministro($event)">
+              @for (item of resumen()!.suministros; track item.id) {
+                <option [value]="item.id">
+                  {{ item.numeroSuministro }} · {{ item.direccionServicio }}
+                </option>
+              }
+            </select></label
+          >
+        }
+      </header>
+
+      @if (error()) {
+        <div class="alert alert--error" role="alert">
+          <app-icon name="help" /><span>{{ error() }}</span>
+          @if (!sinVinculo()) {
+            <button type="button" aria-label="Cerrar mensaje" (click)="error.set('')">
+              <app-icon name="close" />
+            </button>
+          }
+        </div>
+      }
+      @if (exito()) {
+        <div class="alert alert--success" role="status">
+          <app-icon name="check-circle" /><span>{{ exito() }}</span
+          ><button type="button" aria-label="Cerrar mensaje" (click)="exito.set('')">
+            <app-icon name="close" />
+          </button>
+        </div>
+      }
+
+      @if (cargando()) {
+        <section class="content-card">
+          <div class="state-panel" role="status">
+            <span class="spinner"></span>
+            <h2>Cargando tu información</h2>
+            <p>Validando el vínculo seguro de tu cuenta…</p>
+          </div>
+        </section>
+      } @else if (sinVinculo()) {
+        <section class="content-card">
+          <div class="state-panel state-panel--wide">
+            <app-icon name="lock" />
+            <h2>Falta vincular tu cuenta</h2>
+            <p>
+              Solicita al administrador que vincule tu usuario con tu registro de cliente mediante
+              tu número de identificación. No debes crear otra cuenta.
+            </p>
+            <button class="secondary-button" type="button" (click)="cargarResumen()">
+              <app-icon name="refresh" />Volver a intentar
+            </button>
+          </div>
+        </section>
+      } @else if (!resumen()?.suministros?.length) {
+        <section class="content-card">
+          <div class="state-panel">
+            <app-icon name="plug" />
+            <h2>No hay suministros registrados</h2>
+            <p>Tu cuenta está vinculada, pero todavía no tiene un suministro asociado.</p>
+          </div>
+        </section>
+      } @else if (detalle(); as datos) {
+        @if (vista() === 'resumen') {
+          <section
+            class="service-hero"
+            [class.service-hero--suspended]="datos.suministro.estadoServicio === 'SUSPENDIDO'"
+          >
+            <div>
+              <span class="status" [ngClass]="claseEstado(datos.suministro.estadoServicio)">{{
+                etiqueta(datos.suministro.estadoServicio)
+              }}</span>
+              <h2>{{ datos.suministro.direccionServicio }}</h2>
+              <p>
+                Suministro {{ datos.suministro.numeroSuministro }} · Contrato
+                {{ datos.suministro.numeroContrato }}
+              </p>
+            </div>
+            <div class="balance">
+              <span>Saldo pendiente</span
+              ><strong>{{
+                datos.suministro.saldoPendiente | currency: 'USD' : 'symbol' : '1.2-2'
+              }}</strong
+              ><small>{{ datos.suministro.facturasPendientes }} factura(s) pendiente(s)</small>
+            </div>
+          </section>
+          <section class="metric-grid user-metrics">
+            <article>
+              <span>Estado del servicio</span
+              ><strong class="metric-text">{{ etiqueta(datos.suministro.estadoServicio) }}</strong
+              ><app-icon name="plug" />
+            </article>
+            <article>
+              <span>Orden activa</span
+              ><strong class="metric-text">{{
+                datos.suministro.estadoOrdenActiva
+                  ? etiqueta(datos.suministro.estadoOrdenActiva)
+                  : 'Ninguna'
+              }}</strong
+              ><app-icon name="activity" />
+            </article>
+            <article>
+              <span>Reclamos abiertos</span><strong>{{ datos.suministro.reclamosAbiertos }}</strong
+              ><app-icon name="message" />
+            </article>
+            <article>
+              <span>Últimos pagos</span><strong>{{ datos.pagos.length }}</strong
+              ><app-icon name="card" />
+            </article>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="content-card consumption-card">
+              <div class="card-heading">
+                <div>
+                  <span class="eyebrow">Historial real</span>
+                  <h2>Consumo mensual</h2>
+                </div>
+                <app-icon name="bar-chart" />
+              </div>
+              @if (datos.facturas.length) {
+                <div class="consumption-chart" aria-label="Gráfico de consumo por factura">
+                  @for (item of datos.facturas.slice(0, 8).reverse(); track item.id) {
+                    <div class="bar-column">
+                      <span class="bar-value">{{ item.consumoFacturado }}</span>
+                      <div class="bar-track">
+                        <span [style.height.%]="alturaConsumo(item)"></span>
+                      </div>
+                      <small>{{ item.fechaEmision | date: 'MMM' }}</small>
+                    </div>
+                  }
+                </div>
+                <p class="chart-note">
+                  Valores en {{ datos.facturas[0].unidadConsumo }} según tus facturas registradas.
+                </p>
+              } @else {
+                <div class="mini-empty">No hay facturas para graficar todavía.</div>
+              }
+            </article>
+            <article class="content-card latest-card">
+              <div class="card-heading">
+                <div>
+                  <span class="eyebrow">Actividad</span>
+                  <h2>Lo más reciente</h2>
+                </div>
+                <button class="text-button" type="button" (click)="cambiarVista('seguimiento')">
+                  Ver seguimiento
+                </button>
+              </div>
+              @if (datos.lineaTiempo.length) {
+                <ol class="compact-timeline">
+                  @for (
+                    evento of datos.lineaTiempo.slice(0, 4);
+                    track evento.fechaUtc + evento.titulo
+                  ) {
+                    <li>
+                      <span></span>
+                      <div>
+                        <strong>{{ evento.titulo }}</strong>
+                        <p>{{ evento.descripcion }}</p>
+                        <small
+                          >{{ evento.fechaUtc | date: 'dd/MM/yyyy HH:mm' }} ·
+                          {{ etiqueta(evento.estado) }}</small
+                        >
+                      </div>
+                    </li>
+                  }
+                </ol>
+              } @else {
+                <div class="mini-empty">Aún no hay movimientos registrados.</div>
+              }
+            </article>
+          </section>
+        }
+
+        @if (vista() === 'facturas') {
+          <section class="content-card table-card">
+            <div class="card-heading padded">
+              <div>
+                <span class="eyebrow">Documentos emitidos</span>
+                <h2>Mis facturas</h2>
+              </div>
+            </div>
+            @if (datos.facturas.length) {
+              <div class="responsive-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Factura</th>
+                      <th>Periodo</th>
+                      <th>Consumo</th>
+                      <th>Vencimiento</th>
+                      <th>Estado</th>
+                      <th class="numeric">Saldo</th>
+                      <th><span class="sr-only">Acción</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of datos.facturas; track item.id) {
+                      <tr>
+                        <td>
+                          <strong>{{ item.numeroFactura }}</strong
+                          ><small>{{ item.fechaEmision | date: 'dd/MM/yyyy' }}</small>
+                        </td>
+                        <td>
+                          {{ item.periodoDesde | date: 'dd/MM/yy' }} —
+                          {{ item.periodoHasta | date: 'dd/MM/yy' }}
+                        </td>
+                        <td>{{ item.consumoFacturado }} {{ item.unidadConsumo }}</td>
+                        <td>{{ item.fechaVencimiento | date: 'dd/MM/yyyy' }}</td>
+                        <td>
+                          <span class="status" [ngClass]="claseEstado(item.estado)">{{
+                            etiqueta(item.estado)
+                          }}</span>
+                        </td>
+                        <td class="numeric">{{ item.saldoPendiente | currency: 'USD' }}</td>
+                        <td>
+                          <button
+                            class="text-button"
+                            type="button"
+                            (click)="abrirFactura(item, $event)"
+                          >
+                            Ver detalle
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="state-panel">
+                <app-icon name="file-text" />
+                <h2>Sin facturas</h2>
+                <p>No hay documentos emitidos para este suministro.</p>
+              </div>
+            }
+          </section>
+        }
+
+        @if (vista() === 'pagos') {
+          <section class="payment-intro" aria-labelledby="online-payment-title">
+            <div>
+              <span class="payment-icon"><app-icon name="card" /></span>
+              <span><small>Pago en línea</small><h2 id="online-payment-title">Paga sin compartir tu tarjeta con SGSE</h2><p>El cobro se realizará en una página segura del proveedor. Este sistema no guardará número, fecha ni CVV.</p></span>
+            </div>
+            <button class="primary-button" type="button" [disabled]="!datos.facturas.length" (click)="abrirPago($event)">Preparar pago</button>
+          </section>
+          <section class="content-card table-card">
+            <div class="card-heading padded">
+              <div>
+                <span class="eyebrow">Comprobantes confirmados</span>
+                <h2>Historial de pagos</h2>
+              </div>
+              <span class="read-only"><app-icon name="lock" />Solo consulta</span>
+            </div>
+            @if (datos.pagos.length) {
+              <div class="responsive-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Referencia</th>
+                      <th>Fecha</th>
+                      <th>Estado</th>
+                      <th class="numeric">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of datos.pagos; track item.id) {
+                      <tr>
+                        <td>
+                          <strong>{{ item.referencia }}</strong>
+                        </td>
+                        <td>{{ item.fechaConfirmacionUtc | date: 'dd/MM/yyyy HH:mm' }}</td>
+                        <td>
+                          <span class="status" [ngClass]="claseEstado(item.estado)">{{
+                            etiqueta(item.estado)
+                          }}</span>
+                        </td>
+                        <td class="numeric">{{ item.monto | currency: item.moneda }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="state-panel">
+                <app-icon name="card" />
+                <h2>Sin pagos registrados</h2>
+                <p>Cuando se confirme un pago aparecerá aquí.</p>
+              </div>
+            }
+          </section>
+        }
+
+        @if (vista() === 'seguimiento') {
+          <section class="tracking-grid">
+            <article class="content-card padded-card">
+              <div class="card-heading">
+                <div>
+                  <span class="eyebrow">Cortes y reconexiones</span>
+                  <h2>Órdenes del servicio</h2>
+                </div>
+              </div>
+              @if (datos.ordenes.length) {
+                <div class="tracking-orders">
+                  @for (orden of datos.ordenes; track orden.id) {
+                    <article>
+                      <div>
+                        <strong
+                          >{{ orden.tipo === 'RECONEXION' ? 'Reconexión' : 'Corte' }} ·
+                          {{ orden.codigo }}</strong
+                        ><small
+                          >Creada {{ orden.fechaCreacionUtc | date: 'dd/MM/yyyy HH:mm' }}</small
+                        >
+                      </div>
+                      <span class="status" [ngClass]="claseEstado(orden.estado)">{{
+                        etiqueta(orden.estado)
+                      }}</span>
+                      <dl>
+                        <div>
+                          <dt>Prioridad</dt>
+                          <dd>{{ etiqueta(orden.prioridad) }}</dd>
+                        </div>
+                        <div>
+                          <dt>Compromiso SLA</dt>
+                          <dd>
+                            {{
+                              orden.fechaLimiteSlaUtc
+                                ? (orden.fechaLimiteSlaUtc | date: 'dd/MM/yyyy HH:mm')
+                                : 'Sin fecha publicada'
+                            }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Evidencia final</dt>
+                          <dd>
+                            {{
+                              orden.evidenciaFechaUtc
+                                ? (orden.evidenciaFechaUtc | date: 'dd/MM/yyyy HH:mm')
+                                : 'Pendiente'
+                            }}
+                          </dd>
+                        </div>
+                      </dl>
+                      @if (orden.evidenciaId) {
+                        <button
+                          class="text-button evidence-download"
+                          type="button"
+                          [disabled]="descargandoEvidencia() !== null"
+                          (click)="descargarEvidencia(orden.evidenciaId, orden.codigo)"
+                        >
+                          <app-icon name="file-text" />
+                          {{
+                            descargandoEvidencia() === orden.evidenciaId
+                              ? 'Descargando…'
+                              : 'Descargar evidencia final'
+                          }}
+                        </button>
+                      }
+                    </article>
+                  }
+                </div>
+              } @else {
+                <div class="mini-empty">No existen órdenes para este suministro.</div>
+              }
+            </article>
+            <article class="content-card padded-card">
+              <div class="card-heading">
+                <div>
+                  <span class="eyebrow">Trazabilidad</span>
+                  <h2>Línea de tiempo</h2>
+                </div>
+              </div>
+              <ol class="timeline user-timeline">
+                @for (evento of datos.lineaTiempo; track evento.fechaUtc + evento.titulo) {
+                  <li>
+                    <span></span>
+                    <div>
+                      <strong>{{ evento.titulo }}</strong
+                      ><small
+                        >{{ evento.fechaUtc | date: 'dd/MM/yyyy HH:mm' }} ·
+                        {{ etiqueta(evento.estado) }}</small
+                      >
+                      <p>{{ evento.descripcion }}</p>
+                    </div>
+                  </li>
+                }
+              </ol>
+            </article>
+          </section>
+        }
+
+        @if (vista() === 'reclamos') {
+          <section class="content-card table-card">
+            <div class="card-heading padded">
+              <div>
+                <span class="eyebrow">Atención al cliente</span>
+                <h2>Mis reclamos</h2>
+              </div>
+              <button class="primary-button" type="button" (click)="abrirReclamo($event)">
+                <app-icon name="plus" />Nuevo reclamo
+              </button>
+            </div>
+            @if (datos.reclamos.length) {
+              <div class="claims-list">
+                @for (item of datos.reclamos; track item.id) {
+                  <article>
+                    <div>
+                      <strong>{{ item.numeroCaso }}</strong
+                      ><span class="status" [ngClass]="claseEstado(item.estado)">{{
+                        etiqueta(item.estado)
+                      }}</span>
+                    </div>
+                    <h3>{{ etiqueta(item.tipo) }}</h3>
+                    <p>{{ item.descripcion }}</p>
+                    <small
+                      >Creado {{ item.fechaCreacionUtc | date: 'dd/MM/yyyy HH:mm' }}
+                      @if (item.resolucion) {
+                        · Resolución: {{ item.resolucion }}
+                      }
+                    </small>
+                  </article>
+                }
+              </div>
+            } @else {
+              <div class="state-panel">
+                <app-icon name="message" />
+                <h2>No tienes reclamos</h2>
+                <p>Si necesitas ayuda, crea un caso y podrás seguir su estado aquí.</p>
+                <button class="primary-button" type="button" (click)="abrirReclamo($event)">
+                  Crear reclamo
+                </button>
+              </div>
+            }
+          </section>
+        }
+      }
+    </main>
+  </section>
+</div>
+
+@if (factura(); as item) {
+  <button
+    class="drawer-backdrop"
+    type="button"
+    aria-label="Cerrar factura"
+    (click)="cerrarFactura()"
+  ></button>
+  <aside
+    class="detail-drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-factura"
+    (keydown)="atraparFoco($event)"
+  >
+    <header>
+      <div>
+        <span class="eyebrow">Factura eléctrica</span>
+        <h2 id="titulo-factura">{{ item.numeroFactura }}</h2>
+      </div>
+      <button #cerrarOverlayButton type="button" aria-label="Cerrar" (click)="cerrarFactura()">
+        <app-icon name="close" />
+      </button>
+    </header>
+    <div class="drawer-content">
+      <section class="invoice-total">
+        <span>Total facturado</span><strong>{{ item.totalFactura | currency: item.moneda }}</strong
+        ><small>Saldo pendiente: {{ item.saldoPendiente | currency: item.moneda }}</small>
+      </section>
+      <dl class="invoice-data">
+        <div>
+          <dt>Titular</dt>
+          <dd>{{ item.titularActual }}</dd>
+        </div>
+        <div>
+          <dt>Suministro</dt>
+          <dd>{{ item.numeroSuministro }}</dd>
+        </div>
+        <div>
+          <dt>Periodo</dt>
+          <dd>
+            {{ item.periodoDesde | date: 'dd/MM/yyyy' }} —
+            {{ item.periodoHasta | date: 'dd/MM/yyyy' }}
+          </dd>
+        </div>
+        <div>
+          <dt>Consumo</dt>
+          <dd>{{ item.consumoFacturado }} {{ item.unidadConsumo }}</dd>
+        </div>
+        <div>
+          <dt>Lecturas</dt>
+          <dd>{{ item.lecturaAnterior }} → {{ item.lecturaActual }}</dd>
+        </div>
+        <div>
+          <dt>Vencimiento</dt>
+          <dd>{{ item.fechaVencimiento | date: 'dd/MM/yyyy' }}</dd>
+        </div>
+      </dl>
+      <section class="invoice-lines">
+        <h3>Detalle de valores</h3>
+        @for (linea of item.lineas; track linea.numeroLinea) {
+          <div>
+            <span
+              >{{ linea.descripcionOriginal }}<small>{{ etiqueta(linea.categoria) }}</small></span
+            ><strong>{{ linea.monto | currency: item.moneda }}</strong>
+          </div>
+        }
+      </section>
+    </div>
+  </aside>
+}
+
+@if (panelPago()) {
+  <button class="drawer-backdrop" type="button" aria-label="Cerrar preparación de pago" (click)="cerrarPago()"></button>
+  <aside class="detail-drawer payment-drawer" role="dialog" aria-modal="true" aria-labelledby="payment-title" (keydown)="atraparFoco($event)">
+    <header><div><span class="eyebrow">Cobro protegido</span><h2 id="payment-title">Preparar pago</h2><p>Revisa la factura y el canal antes de continuar.</p></div><button #cerrarOverlayButton class="icon-button" type="button" aria-label="Cerrar" (click)="cerrarPago()"><app-icon name="close" /></button></header>
+    <div class="payment-security"><app-icon name="lock" /><p><strong>Los datos de tarjeta no pasan por SGSE.</strong><span>La pasarela autorizada se encarga del formulario y la validación bancaria.</span></p></div>
+    <label class="payment-field" for="payment-invoice">Factura con saldo<select id="payment-invoice" [value]="facturaPagoId() ?? ''" (change)="cambiarFacturaPago($event)"><option value="">Selecciona una factura</option>@for (item of detalle()?.facturas ?? []; track item.id) {@if (item.saldoPendiente > 0) {<option [value]="item.id">{{ item.numeroFactura }} · {{ item.saldoPendiente | currency: 'USD' }}</option>}}</select></label>
+    <fieldset class="payment-methods"><legend>Método de pago</legend><button type="button" [class.payment-method--active]="metodoPago() === 'TARJETA'" [attr.aria-pressed]="metodoPago() === 'TARJETA'" (click)="cambiarMetodoPago('TARJETA')"><app-icon name="card" /><span><strong>Tarjeta</strong><small>Débito o crédito en la pasarela</small></span></button><button type="button" [class.payment-method--active]="metodoPago() === 'TRANSFERENCIA'" [attr.aria-pressed]="metodoPago() === 'TRANSFERENCIA'" (click)="cambiarMetodoPago('TRANSFERENCIA')"><app-icon name="tower" /><span><strong>Transferencia</strong><small>Desde una entidad bancaria</small></span></button></fieldset>
+    @if (metodoPago() === 'TARJETA') {<div class="accepted-networks" aria-label="Redes de tarjeta admitidas por la futura pasarela"><span>VISA</span><span>Mastercard</span><span>Débito</span></div>} @else {<label class="payment-field" for="payment-bank">Banco de origen<select id="payment-bank" [value]="bancoPago()" (change)="bancoPago.set($any($event.target).value); pagoError.set('')"><option value="">Selecciona tu banco</option><option>Banco Pichincha</option><option>Banco Guayaquil</option><option>Banco del Pacífico</option><option>Produbanco</option><option>Otra entidad</option></select></label>}
+    @if (facturaSeleccionadaPago(); as seleccionada) {<div class="payment-total"><span>Total a pagar</span><strong>{{ seleccionada.saldoPendiente | currency: 'USD' }}</strong><small>Factura {{ seleccionada.numeroFactura }}</small></div>}
+    @if (pagoError()) {<div class="alert alert--error" role="alert"><app-icon name="help" /><span>{{ pagoError() }}</span></div>}
+    <footer><button class="secondary-button" type="button" (click)="cerrarPago()">Cancelar</button><button class="primary-button" type="button" (click)="continuarPago()">Continuar al pago seguro</button></footer>
+  </aside>
+}
+
+@if (panelReclamo() && detalle(); as datos) {
+  <button
+    class="drawer-backdrop"
+    type="button"
+    aria-label="Cerrar formulario"
+    (click)="cerrarReclamo()"
+  ></button>
+  <aside
+    class="detail-drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-reclamo"
+    (keydown)="atraparFoco($event)"
+  >
+    <header>
+      <div>
+        <span class="eyebrow">Atención al cliente</span>
+        <h2 id="titulo-reclamo">Crear reclamo</h2>
+      </div>
+      <button #cerrarOverlayButton type="button" aria-label="Cerrar" (click)="cerrarReclamo()">
+        <app-icon name="close" />
+      </button>
+    </header>
+    <div class="drawer-content">
+      <div class="claim-supply">
+        <app-icon name="plug" />
+        <p>
+          <strong>{{ datos.suministro.numeroSuministro }}</strong
+          ><span>{{ datos.suministro.direccionServicio }}</span>
+        </p>
+      </div>
+      <form
+        class="drawer-form"
+        novalidate
+        [attr.aria-busy]="guardando()"
+        [formGroup]="reclamo"
+        (ngSubmit)="crearReclamo()"
+      >
+        @if (reclamoError()) {
+          <div class="alert alert--error full-field" role="alert">
+            <app-icon name="help" /><span>{{ reclamoError() }}</span>
+          </div>
+        }
+        <label class="full-field"
+          ><span>Tipo de solicitud *</span
+          ><select formControlName="tipo">
+            <option value="RECONEXION_DEMORADA">Reconexión demorada</option>
+            <option value="PAGO_NO_REFLEJADO">Pago no reflejado</option>
+            <option value="FACTURACION">Consulta de facturación</option>
+            <option value="OTRO">Otro</option>
+          </select></label
+        ><label class="full-field"
+          ><span>Descripción *</span
+          ><textarea
+            #descripcionReclamo
+            id="reclamo-descripcion"
+            formControlName="descripcion"
+            rows="5"
+            maxlength="1200"
+            [attr.aria-invalid]="
+              reclamo.controls.descripcion.touched && reclamo.controls.descripcion.invalid
+            "
+            [attr.aria-describedby]="
+              reclamo.controls.descripcion.touched && reclamo.controls.descripcion.invalid
+                ? 'reclamo-descripcion-error'
+                : null
+            "
+            placeholder="Explica qué ocurrió, desde cuándo y qué necesitas"
+          ></textarea>
+          @if (reclamo.controls.descripcion.touched && reclamo.controls.descripcion.invalid) {
+            <small id="reclamo-descripcion-error" class="field-error"
+              >Describe el caso con al menos 10 caracteres.</small
+            >
+          }</label
+        ><label
+          ><span>Pago relacionado</span
+          ><select formControlName="pagoId">
+            <option value="">Ninguno</option>
+            @for (pago of datos.pagos; track pago.id) {
+              <option [value]="pago.id">
+                {{ pago.referencia }} · {{ pago.monto | currency: pago.moneda }}
+              </option>
+            }
+          </select></label
+        ><label
+          ><span>Orden relacionada</span
+          ><select formControlName="ordenTrabajoId">
+            <option value="">Ninguna</option>
+            @for (orden of datos.ordenes; track orden.id) {
+              <option [value]="orden.id">{{ orden.codigo }} · {{ etiqueta(orden.estado) }}</option>
+            }
+          </select></label
+        >
+        <p class="privacy-note full-field">
+          <app-icon name="lock" />Tu reclamo quedará vinculado únicamente a este suministro.
+        </p>
+        <div class="form-actions full-field">
+          <button class="secondary-button" type="button" (click)="cerrarReclamo()">Cancelar</button
+          ><button class="primary-button" type="submit" [disabled]="guardando()">
+            {{ guardando() ? 'Creando…' : 'Crear reclamo' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </aside>
+}

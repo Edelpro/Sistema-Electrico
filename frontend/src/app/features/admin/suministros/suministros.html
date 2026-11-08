@@ -1,0 +1,524 @@
+<section class="users-module" aria-labelledby="supplies-title">
+  <div class="client-content" [attr.inert]="confirmacion() ? '' : null">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">Cuentas del servicio</span>
+        <h1 id="supplies-title">Suministros eléctricos</h1>
+        <p>Administra contrato, CUEN, titular, dirección, tarifa y estado del punto de servicio.</p>
+      </div>
+      <div class="module-actions">
+        <div class="module-count" aria-label="Total de suministros">
+          <span>{{ total() }}</span
+          ><small>{{ total() === 1 ? 'suministro' : 'suministros' }}</small>
+        </div>
+        <button
+          #createButton
+          type="button"
+          class="primary-action"
+          [attr.aria-expanded]="editorAbierto()"
+          aria-controls="supply-editor"
+          (click)="abrirCrear($event)"
+        >
+          <app-icon name="plus" />Crear suministro
+        </button>
+      </div>
+    </header>
+
+    @if (mensajeExito()) {
+      <div #successMessage class="success-banner" role="status" tabindex="-1">
+        <app-icon name="check-circle" /><span>{{ mensajeExito() }}</span
+        ><button type="button" aria-label="Cerrar confirmación" (click)="ocultarMensajeExito()">
+          <app-icon name="close" />
+        </button>
+      </div>
+    }
+
+    @if (editorAbierto()) {
+      <section id="supply-editor" class="client-editor" aria-labelledby="supply-editor-title">
+        <header class="editor-heading">
+          <div>
+            <span class="editor-step">{{
+              editando() ? 'Edición auditada' : 'Nueva cuenta de servicio'
+            }}</span>
+            <h2 #editorHeading id="supply-editor-title" tabindex="-1">
+              {{ editando() ? 'Editar suministro' : 'Crear suministro' }}
+            </h2>
+            <p>
+              {{
+                editando()
+                  ? 'Los cambios requieren un motivo para conservar trazabilidad.'
+                  : 'El titular debe existir y estar activo en el módulo Clientes.'
+              }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="icon-action"
+            aria-label="Cerrar formulario de suministro"
+            [disabled]="guardando()"
+            (click)="solicitarCerrarEditor()"
+          >
+            <app-icon name="close" />
+          </button>
+        </header>
+        @if (cargandoDetalle()) {
+          <div class="editor-loading" role="status">
+            <span class="loading-indicator" aria-hidden="true"></span
+            ><span>Cargando suministro…</span>
+          </div>
+        } @else {
+          <form #supplyForm [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+            @if (mensajeFormulario()) {
+              <div class="form-alert" role="alert">
+                <app-icon name="help" /><span>{{ mensajeFormulario() }}</span>
+              </div>
+            }
+            <div class="form-grid supply-form-grid">
+              <div class="form-field">
+                <label for="supply-number">Número de suministro <span>*</span></label
+                ><input
+                  id="supply-number"
+                  formControlName="numeroSuministro"
+                  maxlength="30"
+                  autocomplete="off"
+                  [attr.aria-invalid]="mostrarError('numeroSuministro')"
+                  [attr.aria-describedby]="
+                    mostrarError('numeroSuministro') ? 'supply-number-error' : null
+                  "
+                />
+                @if (mostrarError('numeroSuministro')) {
+                  <small id="supply-number-error" class="field-error">{{
+                    errorCampo('numeroSuministro')
+                  }}</small>
+                }
+              </div>
+              <div class="form-field">
+                <label for="contract-number">Número de contrato <span>*</span></label
+                ><input
+                  id="contract-number"
+                  formControlName="numeroContrato"
+                  maxlength="30"
+                  autocomplete="off"
+                  [attr.aria-invalid]="mostrarError('numeroContrato')"
+                  [attr.aria-describedby]="
+                    mostrarError('numeroContrato') ? 'contract-number-error' : null
+                  "
+                />
+                @if (mostrarError('numeroContrato')) {
+                  <small id="contract-number-error" class="field-error">{{
+                    errorCampo('numeroContrato')
+                  }}</small>
+                }
+              </div>
+              <div class="form-field">
+                <label for="cuen">CUEN <span>*</span></label
+                ><input
+                  id="cuen"
+                  formControlName="cuen"
+                  maxlength="50"
+                  autocomplete="off"
+                  [attr.aria-invalid]="mostrarError('cuen')"
+                  [attr.aria-describedby]="mostrarError('cuen') ? 'cuen-error' : 'cuen-help'"
+                /><small id="cuen-help" class="field-help">Código Único Eléctrico Nacional.</small>
+                @if (mostrarError('cuen')) {
+                  <small id="cuen-error" class="field-error">{{ errorCampo('cuen') }}</small>
+                }
+              </div>
+              <div class="form-field">
+                <label for="holder-id">Identificación del titular <span>*</span></label
+                ><select
+                  id="holder-id"
+                  formControlName="clienteIdentificacion"
+                  [attr.aria-invalid]="mostrarError('clienteIdentificacion')"
+                  [attr.aria-describedby]="
+                    mostrarError('clienteIdentificacion') ? 'holder-id-error' : 'holder-id-help'
+                  "
+                >
+                  <option value="">Selecciona un cliente activo</option>
+                  @for (cliente of catalogos()?.clientes ?? []; track cliente.id) {
+                    <option [value]="cliente.identificacion">
+                      {{ cliente.identificacion }} · {{ cliente.nombre }}
+                    </option>
+                  }
+                </select><small id="holder-id-help" class="field-help"
+                  >El suministro quedará asociado al titular seleccionado.</small
+                >
+                @if (catalogosError()) {
+                  <small class="field-error">{{ catalogosError() }}</small>
+                }
+                @if (mostrarError('clienteIdentificacion')) {
+                  <small id="holder-id-error" class="field-error">{{
+                    errorCampo('clienteIdentificacion')
+                  }}</small>
+                }
+              </div>
+              <div class="form-field form-field--wide">
+                <label for="service-address">Dirección del servicio <span>*</span></label
+                ><textarea
+                  id="service-address"
+                  class="resize-none"
+                  formControlName="direccionServicio"
+                  rows="3"
+                  maxlength="300"
+                  [attr.aria-invalid]="mostrarError('direccionServicio')"
+                  [attr.aria-describedby]="
+                    mostrarError('direccionServicio') ? 'service-address-error' : null
+                  "
+                ></textarea>
+                @if (mostrarError('direccionServicio')) {
+                  <small id="service-address-error" class="field-error">{{
+                    errorCampo('direccionServicio')
+                  }}</small>
+                }
+              </div>
+              <div class="form-field">
+                <label for="province">Provincia <small>Opcional</small></label
+                ><input id="province" formControlName="provincia" maxlength="80" />
+              </div>
+              <div class="form-field">
+                <label for="canton">Cantón <small>Opcional</small></label
+                ><input id="canton" formControlName="canton" maxlength="80" />
+              </div>
+              <div class="form-field">
+                <label for="parish">Parroquia <small>Opcional</small></label
+                ><input id="parish" formControlName="parroquia" maxlength="80" />
+              </div>
+              <div class="form-field">
+                <label for="geocode">Plan / geocódigo <small>Opcional</small></label
+                ><input id="geocode" formControlName="planGeocodigo" maxlength="50" />
+              </div>
+              <div class="form-field">
+                <label for="tariff-code">Código tarifario <small>Opcional</small></label
+                ><input id="tariff-code" formControlName="codigoTarifa" maxlength="40" />
+              </div>
+              <div class="form-field">
+                <label for="tariff-name">Nombre de tarifa <small>Opcional</small></label
+                ><input id="tariff-name" formControlName="nombreTarifa" maxlength="100" />
+              </div>
+              @if (editando()) {
+                <div class="form-field form-field--wide">
+                  <label for="supply-reason">Motivo administrativo <span>*</span></label
+                  ><textarea
+                    id="supply-reason"
+                    class="resize-none"
+                    formControlName="motivo"
+                    rows="3"
+                    maxlength="250"
+                    [attr.aria-invalid]="mostrarError('motivo')"
+                    [attr.aria-describedby]="
+                      mostrarError('motivo') ? 'supply-reason-error' : 'supply-reason-help'
+                    "
+                  ></textarea
+                  ><small id="supply-reason-help" class="field-help"
+                    >Se registra con los valores anteriores y nuevos.</small
+                  >
+                  @if (mostrarError('motivo')) {
+                    <small id="supply-reason-error" class="field-error">{{
+                      errorCampo('motivo')
+                    }}</small>
+                  }
+                </div>
+              }
+            </div>
+            <div class="security-note">
+              <app-icon name="lock" />
+              <p>
+                Desactivar este registro no genera una orden de corte. Los cortes y reconexiones
+                pertenecen a su flujo operativo.
+              </p>
+            </div>
+            <footer class="form-actions">
+              <p><span>*</span> Campos obligatorios</p>
+              <div>
+                <button
+                  type="button"
+                  class="secondary-action"
+                  [disabled]="guardando()"
+                  (click)="solicitarCerrarEditor()"
+                >
+                  Cancelar</button
+                ><button
+                  type="submit"
+                  class="primary-action save-action"
+                  [disabled]="guardando() || cargandoDetalle()"
+                  [attr.aria-busy]="guardando()"
+                >
+                  @if (guardando()) {
+                    <span class="button-spinner" aria-hidden="true"></span>Guardando…
+                  } @else {
+                    <app-icon name="check-circle" />{{
+                      editando() ? 'Guardar cambios' : 'Crear suministro'
+                    }}
+                  }
+                </button>
+              </div>
+            </footer>
+          </form>
+        }
+      </section>
+    }
+
+    <div class="users-toolbar">
+      <div class="search-field">
+        <label for="supplies-search">Buscar suministro</label>
+        <div class="search-control">
+          <app-icon name="search" /><input
+            #searchInput
+            id="supplies-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Suministro, contrato, CUEN o titular"
+            [formControl]="busqueda"
+          />
+          @if (busqueda.value) {
+            <button
+              type="button"
+              aria-label="Limpiar búsqueda de suministros"
+              (click)="limpiarBusqueda()"
+            >
+              <app-icon name="close" />
+            </button>
+          }
+        </div>
+      </div>
+      <p class="toolbar-status" role="status" aria-live="polite">
+        @if (estado() === 'cargando') {
+          Consultando suministros…
+        } @else if (estado() === 'error') {
+          La consulta no está disponible.
+        } @else if (busqueda.value.trim()) {
+          {{ total() }} {{ total() === 1 ? 'resultado' : 'resultados' }} para “{{
+            busqueda.value.trim()
+          }}”.
+        } @else {
+          Mostrando cuentas de suministro registradas.
+        }
+      </p>
+    </div>
+
+    <div class="users-panel">
+      @if (estado() === 'cargando') {
+        <div class="state-panel" role="status" aria-live="polite">
+          <span class="loading-indicator" aria-hidden="true"></span>
+          <h2>Consultando suministros</h2>
+          <p>Espera mientras se obtiene la información.</p>
+        </div>
+      } @else if (estado() === 'error') {
+        <div class="state-panel state-panel--error" role="alert">
+          <span class="state-icon" aria-hidden="true"><app-icon name="plug" /></span>
+          <h2>No se pudo cargar el módulo</h2>
+          <p>{{ mensajeError() }}</p>
+          <button type="button" (click)="reintentar()">Reintentar consulta</button>
+        </div>
+      } @else if (!suministros().length) {
+        <div class="state-panel">
+          <span class="state-icon" aria-hidden="true"><app-icon name="plug" /></span>
+          @if (busqueda.value.trim()) {
+            <h2>No encontramos coincidencias</h2>
+            <p>Prueba con otro suministro, contrato, CUEN, dirección o titular.</p>
+            <button type="button" (click)="limpiarBusqueda()">Limpiar búsqueda</button>
+          } @else {
+            <h2>No hay suministros registrados</h2>
+            <p>Crea el primer punto de servicio y vincúlalo con un cliente activo.</p>
+            <button type="button" (click)="abrirCrear($event)">Crear primer suministro</button>
+          }
+        </div>
+      } @else {
+        <p class="mobile-table-hint">Desliza horizontalmente para consultar todas las columnas.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Lista de suministros">
+          <table>
+            <caption class="sr-only">
+              Cuentas de suministro registradas
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Suministro</th>
+                <th scope="col">Titular</th>
+                <th scope="col">Dirección</th>
+                <th scope="col">Tarifa</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of suministros(); track item.id) {
+                <tr>
+                  <td>
+                    <span class="supply-identity"
+                      ><span class="row-avatar" aria-hidden="true"><app-icon name="plug" /></span
+                      ><span
+                        ><strong>{{ item.numeroSuministro }}</strong
+                        ><small class="contract-value">Contrato {{ item.numeroContrato }}</small
+                        ><small>CUEN {{ item.cuen }}</small></span
+                      ></span
+                    >
+                  </td>
+                  <td>
+                    <span class="holder-value">{{ item.titularActual }}</span>
+                  </td>
+                  <td>
+                    <span class="address-value"
+                      ><strong>{{ item.direccionServicio }}</strong
+                      ><small>{{
+                        ubicacion(item) || 'Ubicación territorial no registrada'
+                      }}</small></span
+                    >
+                  </td>
+                  <td>
+                    <span class="tariff-value"
+                      ><strong>{{ item.codigoTarifa || 'Sin código' }}</strong
+                      ><small>{{ item.nombreTarifa || 'Tarifa no registrada' }}</small></span
+                    >
+                  </td>
+                  <td>
+                    <span
+                      class="status-badge"
+                      [class.status-badge--inactive]="!esActivo(item.estadoServicio)"
+                      ><i aria-hidden="true"></i
+                      >{{ esActivo(item.estadoServicio) ? 'Activo' : 'Inactivo' }}</span
+                    >
+                  </td>
+                  <td>
+                    <div class="row-actions">
+                      <button
+                        type="button"
+                        class="row-action"
+                        [attr.aria-label]="'Editar suministro ' + item.numeroSuministro"
+                        (click)="abrirEditar(item, $event)"
+                      >
+                        <app-icon name="edit" />Editar</button
+                      ><button
+                        type="button"
+                        class="row-action row-action--state"
+                        [class.row-action--restore]="!esActivo(item.estadoServicio)"
+                        [attr.aria-label]="
+                          (esActivo(item.estadoServicio)
+                            ? 'Desactivar suministro '
+                            : 'Reactivar suministro ') + item.numeroSuministro
+                        "
+                        (click)="solicitarCambioEstado(item, $event)"
+                      >
+                        <app-icon
+                          [name]="esActivo(item.estadoServicio) ? 'pause-circle' : 'refresh'"
+                        />{{ esActivo(item.estadoServicio) ? 'Desactivar' : 'Reactivar' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="pagination-bar">
+          <p>
+            Mostrando <strong>{{ rangoInicio() }}–{{ rangoFin() }}</strong> de
+            <strong>{{ total() }}</strong>
+          </p>
+          <nav aria-label="Paginación de suministros">
+            <button type="button" [disabled]="pagina() === 1" (click)="cambiarPagina(pagina() - 1)">
+              Anterior</button
+            ><span aria-current="page">Página {{ pagina() }} de {{ totalPaginas() }}</span
+            ><button
+              type="button"
+              [disabled]="pagina() === totalPaginas()"
+              (click)="cambiarPagina(pagina() + 1)"
+            >
+              Siguiente
+            </button>
+          </nav>
+        </footer>
+      }
+    </div>
+    <aside class="module-note" aria-label="Política de suministros">
+      <app-icon name="help" />
+      <p>
+        Los suministros no se eliminan. Los cambios quedan auditados y un suministro con medidor
+        activo no puede desactivarse.
+      </p>
+    </aside>
+  </div>
+
+  @if (confirmacion(); as actual) {
+    <div class="dialog-backdrop" aria-hidden="true"></div>
+    <section
+      #confirmationDialog
+      class="confirmation-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="supply-confirm-title"
+      aria-describedby="supply-confirm-description"
+    >
+      <span class="confirmation-icon" aria-hidden="true"
+        ><app-icon [name]="actual.tipo === 'descartar' ? 'help' : 'plug'"
+      /></span>
+      <h2 id="supply-confirm-title">
+        @if (actual.tipo === 'descartar') {
+          ¿Descartar los cambios?
+        } @else {
+          {{ actual.activar ? 'Reactivar suministro' : 'Desactivar suministro' }}
+        }
+      </h2>
+      <p id="supply-confirm-description">
+        @if (actual.tipo === 'descartar') {
+          La información escrita no se guardará.
+        } @else if (actual.activar) {
+          El suministro {{ actual.suministro.numeroSuministro }} volverá a estar disponible para
+          gestión.
+        } @else {
+          Se desactivará el registro sin ordenar un corte ni borrar su historial.
+        }
+      </p>
+      @if (actual.tipo === 'estado') {
+        <div class="form-field confirmation-reason">
+          <label for="supply-state-reason">Motivo del cambio <span>*</span></label
+          ><textarea
+            id="supply-state-reason"
+            class="resize-none"
+            [formControl]="motivoEstado"
+            rows="3"
+            maxlength="250"
+            [attr.aria-invalid]="motivoEstado.invalid && motivoEstado.touched"
+            [attr.aria-describedby]="
+              motivoEstado.invalid && motivoEstado.touched ? 'supply-state-error' : null
+            "
+          ></textarea>
+          @if (motivoEstado.invalid && motivoEstado.touched) {
+            <small id="supply-state-error" class="field-error"
+              >Escribe un motivo de al menos 5 caracteres.</small
+            >
+          }
+        </div>
+      }
+      @if (mensajeConfirmacion()) {
+        <div class="dialog-error" role="alert">{{ mensajeConfirmacion() }}</div>
+      }
+      <footer>
+        <button
+          #confirmationCancel
+          type="button"
+          class="secondary-action"
+          [disabled]="procesandoEstado()"
+          (click)="cerrarConfirmacion()"
+        >
+          {{ actual.tipo === 'descartar' ? 'Seguir editando' : 'Cancelar' }}</button
+        ><button
+          type="button"
+          class="confirmation-action"
+          [class.confirmation-action--danger]="actual.tipo === 'descartar'"
+          [class.confirmation-action--warning]="actual.tipo === 'estado' && !actual.activar"
+          [disabled]="procesandoEstado()"
+          [attr.aria-busy]="procesandoEstado()"
+          (click)="confirmarAccion()"
+        >
+          @if (procesandoEstado()) {
+            <span class="button-spinner" aria-hidden="true"></span>Procesando…
+          } @else if (actual.tipo === 'descartar') {
+            Descartar cambios
+          } @else {
+            {{ actual.activar ? 'Reactivar' : 'Desactivar' }}
+          }
+        </button>
+      </footer>
+    </section>
+  }
+</section>

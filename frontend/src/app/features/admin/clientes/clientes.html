@@ -1,0 +1,551 @@
+<section class="users-module" aria-labelledby="clients-title">
+  <div class="client-content" [attr.inert]="confirmacion() ? '' : null">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">Gestión comercial</span>
+        <h1 id="clients-title">Clientes del servicio</h1>
+        <p>Crea y administra la identificación, el contacto y el estado de cada cliente.</p>
+      </div>
+
+      <div class="module-actions">
+        <div class="module-count" aria-label="Total de clientes">
+          <span>{{ total() }}</span>
+          <small>{{ total() === 1 ? 'cliente' : 'clientes' }}</small>
+        </div>
+        <button
+          #createButton
+          type="button"
+          class="primary-action"
+          [attr.aria-expanded]="editorAbierto()"
+          aria-controls="client-editor"
+          (click)="abrirCrear($event)"
+        >
+          <app-icon name="plus" />
+          Crear cliente
+        </button>
+      </div>
+    </header>
+
+    @if (mensajeExito()) {
+      <div #successMessage class="success-banner" role="status" tabindex="-1">
+        <app-icon name="check-circle" />
+        <span>{{ mensajeExito() }}</span>
+        <button type="button" aria-label="Cerrar confirmación" (click)="ocultarMensajeExito()">
+          <app-icon name="close" />
+        </button>
+      </div>
+    }
+
+    @if (editorAbierto()) {
+      <section id="client-editor" class="client-editor" aria-labelledby="client-editor-title">
+        <header class="editor-heading">
+          <div>
+            <span class="editor-step">{{ editando() ? 'Edición' : 'Nuevo registro' }}</span>
+            <h2 #clientFormHeading id="client-editor-title" tabindex="-1">
+              {{ editando() ? 'Editar cliente' : 'Crear cliente' }}
+            </h2>
+            <p>
+              {{
+                editando()
+                  ? 'Actualiza únicamente la información confirmada por el cliente.'
+                  : 'Registra la información básica para después vincular sus suministros.'
+              }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="icon-action"
+            aria-label="Cerrar formulario de cliente"
+            [disabled]="guardando()"
+            (click)="solicitarCerrarEditor()"
+          >
+            <app-icon name="close" />
+          </button>
+        </header>
+
+        @if (cargandoDetalle()) {
+          <div class="editor-loading" role="status">
+            <span class="loading-indicator" aria-hidden="true"></span>
+            <span>Cargando datos del cliente…</span>
+          </div>
+        } @else {
+          <form #clientForm [formGroup]="formulario" (ngSubmit)="guardarCliente()" novalidate>
+            @if (mensajeFormulario()) {
+              <div class="form-alert" role="alert">
+                <app-icon name="help" />
+                <span>{{ mensajeFormulario() }}</span>
+              </div>
+            }
+
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="client-document-type">Tipo de identificación <span>*</span></label>
+                <select
+                  id="client-document-type"
+                  formControlName="tipoIdentificacion"
+                  autocomplete="off"
+                  [attr.aria-invalid]="mostrarError('tipoIdentificacion')"
+                  [attr.aria-describedby]="
+                    mostrarError('tipoIdentificacion') ? 'client-document-type-error' : null
+                  "
+                >
+                  <option value="CEDULA">Cédula</option>
+                  <option value="RUC">RUC</option>
+                  <option value="PASAPORTE">Pasaporte</option>
+                </select>
+                @if (mostrarError('tipoIdentificacion')) {
+                  <small id="client-document-type-error" class="field-error">
+                    {{ errorCampo('tipoIdentificacion') }}
+                  </small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="client-document">Identificación <span>*</span></label>
+                <input
+                  id="client-document"
+                  type="text"
+                  formControlName="identificacion"
+                  autocomplete="off"
+                  maxlength="20"
+                  [attr.inputmode]="
+                    formulario.controls.tipoIdentificacion.value === 'PASAPORTE'
+                      ? 'text'
+                      : 'numeric'
+                  "
+                  [attr.aria-invalid]="mostrarError('identificacion')"
+                  [attr.aria-describedby]="
+                    mostrarError('identificacion')
+                      ? 'client-document-help client-document-error'
+                      : 'client-document-help'
+                  "
+                />
+                <small id="client-document-help" class="field-help">{{
+                  ayudaIdentificacion()
+                }}</small>
+                @if (mostrarError('identificacion')) {
+                  <small id="client-document-error" class="field-error">
+                    {{ errorCampo('identificacion') }}
+                  </small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="client-names">
+                  {{
+                    formulario.controls.tipoIdentificacion.value === 'RUC'
+                      ? 'Razón social'
+                      : 'Nombres'
+                  }}
+                  <span>*</span>
+                </label>
+                <input
+                  id="client-names"
+                  type="text"
+                  formControlName="nombres"
+                  autocomplete="given-name"
+                  maxlength="100"
+                  [attr.aria-invalid]="mostrarError('nombres')"
+                  [attr.aria-describedby]="mostrarError('nombres') ? 'client-names-error' : null"
+                />
+                @if (mostrarError('nombres')) {
+                  <small id="client-names-error" class="field-error">
+                    {{ errorCampo('nombres') }}
+                  </small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="client-last-names">
+                  Apellidos
+                  @if (formulario.controls.tipoIdentificacion.value !== 'RUC') {
+                    <span>*</span>
+                  } @else {
+                    <small>Opcional para RUC</small>
+                  }
+                </label>
+                <input
+                  id="client-last-names"
+                  type="text"
+                  formControlName="apellidos"
+                  autocomplete="family-name"
+                  maxlength="100"
+                  [attr.aria-invalid]="mostrarError('apellidos')"
+                  [attr.aria-describedby]="
+                    mostrarError('apellidos') ? 'client-last-names-error' : null
+                  "
+                />
+                @if (mostrarError('apellidos')) {
+                  <small id="client-last-names-error" class="field-error">
+                    {{ errorCampo('apellidos') }}
+                  </small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="client-email">Correo electrónico <small>Opcional</small></label>
+                <input
+                  id="client-email"
+                  type="email"
+                  formControlName="correo"
+                  autocomplete="email"
+                  maxlength="160"
+                  [attr.aria-invalid]="mostrarError('correo')"
+                  [attr.aria-describedby]="mostrarError('correo') ? 'client-email-error' : null"
+                />
+                @if (mostrarError('correo')) {
+                  <small id="client-email-error" class="field-error">{{
+                    errorCampo('correo')
+                  }}</small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="client-phone">Teléfono <small>Opcional</small></label>
+                <input
+                  id="client-phone"
+                  type="tel"
+                  formControlName="telefono"
+                  autocomplete="tel"
+                  maxlength="20"
+                  [attr.aria-invalid]="mostrarError('telefono')"
+                  [attr.aria-describedby]="mostrarError('telefono') ? 'client-phone-error' : null"
+                />
+                @if (mostrarError('telefono')) {
+                  <small id="client-phone-error" class="field-error">
+                    {{ errorCampo('telefono') }}
+                  </small>
+                }
+              </div>
+
+              <div class="form-field form-field--wide">
+                <label for="client-address"
+                  >Dirección de notificación <small>Opcional</small></label
+                >
+                <textarea
+                  id="client-address"
+                  class="resize-none"
+                  formControlName="direccionNotificacion"
+                  autocomplete="street-address"
+                  rows="3"
+                  maxlength="300"
+                  [attr.aria-invalid]="mostrarError('direccionNotificacion')"
+                  [attr.aria-describedby]="
+                    mostrarError('direccionNotificacion') ? 'client-address-error' : null
+                  "
+                ></textarea>
+                @if (mostrarError('direccionNotificacion')) {
+                  <small id="client-address-error" class="field-error">
+                    {{ errorCampo('direccionNotificacion') }}
+                  </small>
+                }
+              </div>
+            </div>
+
+            <footer class="form-actions">
+              <p><span>*</span> Campos obligatorios</p>
+              <div>
+                <button
+                  type="button"
+                  class="secondary-action"
+                  [disabled]="guardando()"
+                  (click)="solicitarCerrarEditor()"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  class="primary-action save-action"
+                  [disabled]="guardando() || cargandoDetalle()"
+                  [attr.aria-busy]="guardando()"
+                >
+                  @if (guardando()) {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    Guardando…
+                  } @else {
+                    <app-icon name="check-circle" />
+                    {{ editando() ? 'Guardar cambios' : 'Crear cliente' }}
+                  }
+                </button>
+              </div>
+            </footer>
+          </form>
+        }
+      </section>
+    }
+
+    <div class="users-toolbar">
+      <div class="search-field">
+        <label for="clients-search">Buscar cliente</label>
+        <div class="search-control">
+          <app-icon name="search" />
+          <input
+            #searchInput
+            id="clients-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Nombre, identificación, correo o teléfono"
+            [formControl]="busqueda"
+          />
+          @if (busqueda.value) {
+            <button
+              type="button"
+              aria-label="Limpiar búsqueda de clientes"
+              (click)="limpiarBusqueda()"
+            >
+              <app-icon name="close" />
+            </button>
+          }
+        </div>
+      </div>
+
+      <p class="toolbar-status" role="status" aria-live="polite">
+        @if (estado() === 'cargando') {
+          Consultando clientes…
+        } @else if (estado() === 'error') {
+          La consulta no está disponible.
+        } @else if (busqueda.value.trim()) {
+          {{ total() }} {{ total() === 1 ? 'resultado' : 'resultados' }} para “{{
+            busqueda.value.trim()
+          }}”.
+        } @else {
+          Mostrando clientes registrados en el sistema.
+        }
+      </p>
+    </div>
+
+    <div class="users-panel">
+      @if (estado() === 'cargando') {
+        <div class="state-panel" role="status" aria-live="polite">
+          <span class="loading-indicator" aria-hidden="true"></span>
+          <h2>Consultando clientes</h2>
+          <p>Espera mientras se obtiene la información de la API.</p>
+        </div>
+      } @else if (estado() === 'error') {
+        <div class="state-panel state-panel--error" role="alert">
+          <span class="state-icon" aria-hidden="true"><app-icon name="users" /></span>
+          <h2>No se pudo cargar el módulo</h2>
+          <p>{{ mensajeError() }}</p>
+          <button type="button" (click)="reintentar()">Reintentar consulta</button>
+        </div>
+      } @else if (!clientes().length) {
+        <div class="state-panel">
+          <span class="state-icon" aria-hidden="true"><app-icon name="users" /></span>
+          @if (busqueda.value.trim()) {
+            <h2>No encontramos coincidencias</h2>
+            <p>Prueba con otro nombre, identificación, correo o teléfono.</p>
+            <button type="button" (click)="limpiarBusqueda()">Limpiar búsqueda</button>
+          } @else {
+            <h2>No hay clientes registrados</h2>
+            <p>Crea el primer cliente para empezar a vincular suministros.</p>
+            <button type="button" (click)="abrirCrear($event)">Crear primer cliente</button>
+          }
+        </div>
+      } @else {
+        <p class="mobile-table-hint">Desliza horizontalmente para consultar todas las columnas.</p>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Lista de clientes">
+          <table>
+            <caption class="sr-only">
+              Clientes registrados en el sistema eléctrico
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Cliente</th>
+                <th scope="col">Identificación</th>
+                <th scope="col">Contacto</th>
+                <th scope="col">Dirección de notificación</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Registro</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cliente of clientes(); track cliente.id) {
+                <tr>
+                  <td>
+                    <span class="user-identity">
+                      <span class="row-avatar" aria-hidden="true">{{
+                        cliente.nombreCompleto.charAt(0)
+                      }}</span>
+                      <span>
+                        <strong>{{ cliente.nombreCompleto }}</strong>
+                        <small>{{ cliente.correo || 'Sin correo registrado' }}</small>
+                      </span>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="id-stack">
+                      <span class="role-badge">{{ cliente.tipoIdentificacion }}</span>
+                      <strong>{{ cliente.identificacion }}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="contact-value">{{ cliente.telefono || 'Sin teléfono' }}</span>
+                  </td>
+                  <td>
+                    <span class="address-value">{{
+                      cliente.direccionNotificacion || 'Sin dirección registrada'
+                    }}</span>
+                  </td>
+                  <td>
+                    <span class="status-badge" [class.status-badge--inactive]="!cliente.activo">
+                      <i aria-hidden="true"></i>
+                      {{ cliente.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td>{{ cliente.fechaRegistro | date: 'dd/MM/yyyy' }}</td>
+                  <td>
+                    <div class="row-actions">
+                      <button
+                        type="button"
+                        class="row-action"
+                        [attr.aria-label]="'Editar a ' + cliente.nombreCompleto"
+                        (click)="abrirEditar(cliente, $event)"
+                      >
+                        <app-icon name="edit" />
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        class="row-action row-action--state"
+                        [class.row-action--restore]="!cliente.activo"
+                        [attr.aria-label]="
+                          (cliente.activo ? 'Desactivar a ' : 'Reactivar a ') +
+                          cliente.nombreCompleto
+                        "
+                        (click)="solicitarCambioEstado(cliente, $event)"
+                      >
+                        <app-icon [name]="cliente.activo ? 'pause-circle' : 'refresh'" />
+                        {{ cliente.activo ? 'Desactivar' : 'Reactivar' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <footer class="pagination-bar">
+          <p>
+            Mostrando <strong>{{ rangoInicio() }}–{{ rangoFin() }}</strong> de
+            <strong>{{ total() }}</strong>
+          </p>
+          <nav aria-label="Paginación de clientes">
+            <button type="button" [disabled]="pagina() === 1" (click)="cambiarPagina(pagina() - 1)">
+              Anterior
+            </button>
+            <span aria-current="page">Página {{ pagina() }} de {{ totalPaginas() }}</span>
+            <button
+              type="button"
+              [disabled]="pagina() === totalPaginas()"
+              (click)="cambiarPagina(pagina() + 1)"
+            >
+              Siguiente
+            </button>
+          </nav>
+        </footer>
+      }
+    </div>
+
+    <aside class="module-note" aria-label="Política de conservación de clientes">
+      <app-icon name="help" />
+      <p>
+        Los clientes no se eliminan físicamente. Puedes desactivarlos y reactivarlos para conservar
+        la relación histórica con sus suministros y la auditoría administrativa.
+      </p>
+    </aside>
+  </div>
+
+  @if (confirmacion(); as confirmacionActual) {
+    <div class="dialog-backdrop" aria-hidden="true"></div>
+    <section
+      #confirmationDialog
+      class="confirmation-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirmation-title"
+      aria-describedby="confirmation-description"
+    >
+      <span class="confirmation-icon" aria-hidden="true">
+        <app-icon [name]="confirmacionActual.tipo === 'descartar' ? 'help' : 'users'" />
+      </span>
+      <h2 id="confirmation-title">
+        @if (confirmacionActual.tipo === 'descartar') {
+          ¿Descartar los cambios?
+        } @else {
+          {{ confirmacionActual.activar ? 'Reactivar cliente' : 'Desactivar cliente' }}
+        }
+      </h2>
+      <p id="confirmation-description">
+        @if (confirmacionActual.tipo === 'descartar') {
+          La información escrita en el formulario no se guardará.
+        } @else if (confirmacionActual.activar) {
+          {{ confirmacionActual.cliente.nombreCompleto }} volverá a estar disponible para la
+          operación.
+        } @else {
+          {{ confirmacionActual.cliente.nombreCompleto }} quedará inactivo sin borrar su historial.
+        }
+      </p>
+
+      @if (confirmacionActual.tipo === 'estado') {
+        <div class="form-field confirmation-reason">
+          <label for="client-state-reason">Motivo del cambio <span>*</span></label>
+          <textarea
+            id="client-state-reason"
+            class="resize-none"
+            [formControl]="motivoEstado"
+            rows="3"
+            maxlength="250"
+            [attr.aria-invalid]="motivoEstado.invalid && motivoEstado.touched"
+            [attr.aria-describedby]="
+              motivoEstado.invalid && motivoEstado.touched ? 'client-state-reason-error' : null
+            "
+          ></textarea>
+          @if (motivoEstado.invalid && motivoEstado.touched) {
+            <small id="client-state-reason-error" class="field-error">
+              Escribe un motivo de al menos 5 caracteres.
+            </small>
+          }
+        </div>
+      }
+
+      @if (mensajeConfirmacion()) {
+        <div class="dialog-error" role="alert">{{ mensajeConfirmacion() }}</div>
+      }
+
+      <footer>
+        <button
+          #confirmationCancel
+          type="button"
+          class="secondary-action"
+          [disabled]="procesandoEstado()"
+          (click)="cerrarConfirmacion()"
+        >
+          {{ confirmacionActual.tipo === 'descartar' ? 'Seguir editando' : 'Cancelar' }}
+        </button>
+        <button
+          type="button"
+          class="confirmation-action"
+          [class.confirmation-action--danger]="confirmacionActual.tipo === 'descartar'"
+          [class.confirmation-action--warning]="
+            confirmacionActual.tipo === 'estado' && !confirmacionActual.activar
+          "
+          [disabled]="procesandoEstado()"
+          [attr.aria-busy]="procesandoEstado()"
+          (click)="confirmarAccion()"
+        >
+          @if (procesandoEstado()) {
+            <span class="button-spinner" aria-hidden="true"></span>
+            Procesando…
+          } @else if (confirmacionActual.tipo === 'descartar') {
+            Descartar cambios
+          } @else {
+            {{ confirmacionActual.activar ? 'Reactivar' : 'Desactivar' }}
+          }
+        </button>
+      </footer>
+    </section>
+  }
+</section>

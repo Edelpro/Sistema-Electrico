@@ -1,0 +1,84 @@
+@import '../pagos/pagos.css';
+.case-copy {
+  max-width: 36rem;
+  white-space: normal;
+}
+.case-links {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.case-links span {
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+.resolution {
+  padding: 1rem;
+  border-left: 0.25rem solid var(--color-success);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-md);
+}
+.resolution h3 {
+  margin-top: 0;
+}
+.management {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.priority {
+  font-weight: 800;
+  color: var(--color-attention);
+}
+.priority.critical {
+  color: var(--color-danger);
+}
+.order-summary {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.order-summary small {
+  grid-column: 1/-1;
+  color: var(--color-text-muted);
+}
+.actions {
+  display: flex;
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+.timeline {
+  list-style: none;
+  padding: 0;
+}
+.timeline li {
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  gap: 0.8rem;
+  padding-bottom: 1rem;
+}
+.timeline li > span {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  margin-top: 0.25rem;
+}
+.timeline small {
+  display: block;
+  margin: 0.25rem 0;
+  color: var(--color-text-muted);
+}
+.timeline p {
+  margin: 0.25rem 0;
+}

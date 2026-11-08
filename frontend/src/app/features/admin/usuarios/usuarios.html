@@ -1,0 +1,652 @@
+<section class="users-module" aria-labelledby="users-title">
+  <div class="client-content" [attr.inert]="confirmacion() ? '' : null">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">Identidad y acceso</span>
+        <h1 id="users-title">Cuentas del sistema</h1>
+        <p>Crea los accesos de clientes y técnicos, asigna su rol y controla su estado.</p>
+      </div>
+
+      <div class="module-actions">
+        <div class="module-count" aria-label="Total de cuentas">
+          <span>{{ total() }}</span>
+          <small>{{ total() === 1 ? 'cuenta' : 'cuentas' }}</small>
+        </div>
+        <button
+          #createButton
+          type="button"
+          class="primary-action"
+          [attr.aria-expanded]="editorAbierto()"
+          aria-controls="user-editor"
+          (click)="abrirCrear($event)"
+        >
+          <app-icon name="plus" />
+          Crear cuenta
+        </button>
+      </div>
+    </header>
+
+    @if (mensajeExito()) {
+      <div #successMessage class="success-banner" role="status" tabindex="-1">
+        <app-icon name="check-circle" />
+        <span>{{ mensajeExito() }}</span>
+        <button type="button" aria-label="Cerrar confirmación" (click)="ocultarMensajeExito()">
+          <app-icon name="close" />
+        </button>
+      </div>
+    }
+
+    @if (mensajeErrorAccion()) {
+      <div class="action-error-banner" role="alert">
+        <app-icon name="help" />
+        <span>{{ mensajeErrorAccion() }}</span>
+        <button type="button" aria-label="Cerrar error" (click)="ocultarErrorAccion()">
+          <app-icon name="close" />
+        </button>
+      </div>
+    }
+
+    @if (editorAbierto()) {
+      <section id="user-editor" class="client-editor" aria-labelledby="user-editor-title">
+        <header class="editor-heading">
+          <div>
+            <span class="editor-step">{{ editando() ? 'Edición auditada' : 'Nuevo acceso' }}</span>
+            <h2 #userFormHeading id="user-editor-title" tabindex="-1">
+              {{ editando() ? 'Editar cuenta' : 'Crear cuenta de acceso' }}
+            </h2>
+            <p>
+              {{
+                editando()
+                  ? 'Los cambios de identidad o rol requieren un motivo administrativo.'
+                  : 'Elige si la persona ingresará como cliente/usuario o como técnico.'
+              }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="icon-action"
+            aria-label="Cerrar formulario de cuenta"
+            [disabled]="guardando()"
+            (click)="solicitarCerrarEditor()"
+          >
+            <app-icon name="close" />
+          </button>
+        </header>
+
+        @if (cargandoDetalle()) {
+          <div class="editor-loading" role="status">
+            <span class="loading-indicator" aria-hidden="true"></span>
+            <span>Cargando datos de la cuenta…</span>
+          </div>
+        } @else {
+          <form #userForm [formGroup]="formulario" (ngSubmit)="guardarUsuario()" novalidate>
+            @if (mensajeFormulario()) {
+              <div class="form-alert" role="alert">
+                <app-icon name="help" />
+                <span>{{ mensajeFormulario() }}</span>
+              </div>
+            }
+
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="user-role">Rol de acceso <span>*</span></label>
+                <select
+                  id="user-role"
+                  formControlName="rol"
+                  autocomplete="off"
+                  [attr.aria-invalid]="mostrarError('rol')"
+                  [attr.aria-describedby]="
+                    mostrarError('rol') ? 'user-role-error' : 'user-role-help'
+                  "
+                >
+                  <option value="Usuario">Cliente / usuario</option>
+                  <option value="Tecnico">Técnico</option>
+                </select>
+                <small id="user-role-help" class="field-help">
+                  Define el panel y los permisos disponibles al iniciar sesión.
+                </small>
+                @if (mostrarError('rol')) {
+                  <small id="user-role-error" class="field-error">{{ errorCampo('rol') }}</small>
+                }
+              </div>
+
+              @if (formulario.controls.rol.value === 'Usuario') {
+                <div class="form-field">
+                  <label for="user-client-document"
+                    >Identificación del cliente <span>*</span></label
+                  >
+                  <select
+                    id="user-client-document"
+                    formControlName="identificacionCliente"
+                    [attr.aria-invalid]="mostrarError('identificacionCliente')"
+                    [attr.aria-describedby]="
+                      mostrarError('identificacionCliente')
+                        ? 'user-client-document-help user-client-document-error'
+                        : 'user-client-document-help'
+                    "
+                  >
+                    <option value="">Selecciona un cliente activo</option>
+                    @for (cliente of catalogos()?.clientes ?? []; track cliente.id) {
+                      <option [value]="cliente.identificacion">
+                        {{ cliente.identificacion }} · {{ cliente.nombre }}
+                      </option>
+                    }
+                  </select>
+                  <small id="user-client-document-help" class="field-help">
+                    La cuenta quedará vinculada al cliente seleccionado.
+                  </small>
+                  @if (catalogosError()) {
+                    <small class="field-error">{{ catalogosError() }}</small>
+                  }
+                  @if (mostrarError('identificacionCliente')) {
+                    <small id="user-client-document-error" class="field-error">
+                      {{ errorCampo('identificacionCliente') }}
+                    </small>
+                  }
+                </div>
+              }
+
+              <div class="form-field">
+                <label for="user-document">Cédula <span>*</span></label>
+                <input
+                  id="user-document"
+                  type="text"
+                  inputmode="numeric"
+                  formControlName="identificacion"
+                  autocomplete="off"
+                  maxlength="10"
+                  [attr.aria-invalid]="mostrarError('identificacion')"
+                  [attr.aria-describedby]="
+                    mostrarError('identificacion')
+                      ? 'user-document-help user-document-error'
+                      : 'user-document-help'
+                  "
+                />
+                <small id="user-document-help" class="field-help">Exactamente 10 dígitos.</small>
+                @if (mostrarError('identificacion')) {
+                  <small id="user-document-error" class="field-error">
+                    {{ errorCampo('identificacion') }}
+                  </small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="user-names">Nombres <span>*</span></label>
+                <input
+                  id="user-names"
+                  type="text"
+                  formControlName="nombres"
+                  autocomplete="given-name"
+                  maxlength="100"
+                  [attr.aria-invalid]="mostrarError('nombres')"
+                  [attr.aria-describedby]="mostrarError('nombres') ? 'user-names-error' : null"
+                />
+                @if (mostrarError('nombres')) {
+                  <small id="user-names-error" class="field-error">{{
+                    errorCampo('nombres')
+                  }}</small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="user-last-names">Apellidos <span>*</span></label>
+                <input
+                  id="user-last-names"
+                  type="text"
+                  formControlName="apellidos"
+                  autocomplete="family-name"
+                  maxlength="100"
+                  [attr.aria-invalid]="mostrarError('apellidos')"
+                  [attr.aria-describedby]="
+                    mostrarError('apellidos') ? 'user-last-names-error' : null
+                  "
+                />
+                @if (mostrarError('apellidos')) {
+                  <small id="user-last-names-error" class="field-error">
+                    {{ errorCampo('apellidos') }}
+                  </small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="user-email">Correo de acceso <span>*</span></label>
+                <input
+                  id="user-email"
+                  type="email"
+                  formControlName="correo"
+                  autocomplete="email"
+                  maxlength="160"
+                  [attr.aria-invalid]="mostrarError('correo')"
+                  [attr.aria-describedby]="mostrarError('correo') ? 'user-email-error' : null"
+                />
+                @if (mostrarError('correo')) {
+                  <small id="user-email-error" class="field-error">{{
+                    errorCampo('correo')
+                  }}</small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="user-phone">Teléfono <small>Opcional</small></label>
+                <input
+                  id="user-phone"
+                  type="tel"
+                  formControlName="telefono"
+                  autocomplete="tel"
+                  maxlength="20"
+                  [attr.aria-invalid]="mostrarError('telefono')"
+                  [attr.aria-describedby]="mostrarError('telefono') ? 'user-phone-error' : null"
+                />
+                @if (mostrarError('telefono')) {
+                  <small id="user-phone-error" class="field-error">{{
+                    errorCampo('telefono')
+                  }}</small>
+                }
+              </div>
+
+              @if (!editando()) {
+                <fieldset class="access-options form-field--wide">
+                  <legend>Estado y entrega del acceso</legend>
+
+                  <label class="check-option" for="user-active">
+                    <input id="user-active" type="checkbox" formControlName="activo" />
+                    <span>
+                      <strong>Cuenta activa</strong>
+                      <small>Permite iniciar sesión después de que la persona cree su clave.</small>
+                    </span>
+                  </label>
+
+                  <label
+                    class="check-option"
+                    [class.check-option--disabled]="!formulario.controls.activo.value"
+                    for="user-send-invitation"
+                  >
+                    @if (formulario.controls.activo.value) {
+                      <input
+                        id="user-send-invitation"
+                        type="checkbox"
+                        formControlName="enviarInvitacion"
+                      />
+                    } @else {
+                      <input id="user-send-invitation" type="checkbox" disabled />
+                    }
+                    <span>
+                      <strong>Enviar enlace de acceso por correo</strong>
+                      <small>
+                        El enlace dura 30 minutos y permite crear una contraseña privada. Nunca se
+                        envía una contraseña escrita.
+                      </small>
+                    </span>
+                  </label>
+
+                  @if (!formulario.controls.activo.value) {
+                    <p class="access-options__note" role="status">
+                      Primero crea la cuenta inactiva. Cuando decidas habilitarla, usa “Reactivar” y
+                      luego “Enviar acceso”.
+                    </p>
+                  }
+                </fieldset>
+              } @else {
+                <div class="form-field form-field--wide">
+                  <label for="user-edit-reason">Motivo administrativo <span>*</span></label>
+                  <textarea
+                    id="user-edit-reason"
+                    class="resize-none"
+                    formControlName="motivo"
+                    rows="3"
+                    maxlength="250"
+                    [attr.aria-invalid]="mostrarError('motivo')"
+                    [attr.aria-describedby]="
+                      mostrarError('motivo') ? 'user-edit-reason-error' : 'user-edit-reason-help'
+                    "
+                  ></textarea>
+                  <small id="user-edit-reason-help" class="field-help">
+                    Se registra en auditoría junto con los valores anteriores y nuevos.
+                  </small>
+                  @if (mostrarError('motivo')) {
+                    <small id="user-edit-reason-error" class="field-error">
+                      {{ errorCampo('motivo') }}
+                    </small>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="security-note">
+              <app-icon name="lock" />
+              <p>
+                La persona crea su propia contraseña desde un enlace de un solo uso. La clave nunca
+                se envía por correo ni se muestra al administrador. Las cuentas con rol Usuario
+                quedan vinculadas al cliente indicado y solo podrán consultar sus propios datos.
+              </p>
+            </div>
+
+            <footer class="form-actions">
+              <p><span>*</span> Campos obligatorios</p>
+              <div>
+                <button
+                  type="button"
+                  class="secondary-action"
+                  [disabled]="guardando()"
+                  (click)="solicitarCerrarEditor()"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  class="primary-action save-action"
+                  [disabled]="guardando() || cargandoDetalle()"
+                  [attr.aria-busy]="guardando()"
+                >
+                  @if (guardando()) {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    Guardando…
+                  } @else {
+                    <app-icon name="check-circle" />
+                    {{ editando() ? 'Guardar cambios' : 'Crear cuenta' }}
+                  }
+                </button>
+              </div>
+            </footer>
+          </form>
+        }
+      </section>
+    }
+
+    <div class="users-toolbar">
+      <div class="search-field">
+        <label for="users-search">Buscar cuenta</label>
+        <div class="search-control">
+          <app-icon name="search" />
+          <input
+            #searchInput
+            id="users-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Nombre, cédula o correo"
+            [formControl]="busqueda"
+          />
+          @if (busqueda.value) {
+            <button type="button" aria-label="Limpiar búsqueda" (click)="limpiarBusqueda()">
+              <app-icon name="close" />
+            </button>
+          }
+        </div>
+      </div>
+
+      <p class="toolbar-status" role="status" aria-live="polite">
+        @if (estado() === 'cargando') {
+          Consultando cuentas…
+        } @else if (estado() === 'error') {
+          La consulta no está disponible.
+        } @else if (busqueda.value.trim()) {
+          {{ total() }} {{ total() === 1 ? 'resultado' : 'resultados' }} para “{{
+            busqueda.value.trim()
+          }}”.
+        } @else {
+          Mostrando cuentas de acceso registradas en el sistema.
+        }
+      </p>
+    </div>
+
+    <div class="users-panel">
+      @if (estado() === 'cargando') {
+        <div class="state-panel" role="status" aria-live="polite">
+          <span class="loading-indicator" aria-hidden="true"></span>
+          <h2>Consultando cuentas</h2>
+          <p>Espera mientras se obtiene la información de acceso.</p>
+        </div>
+      } @else if (estado() === 'error') {
+        <div class="state-panel state-panel--error" role="alert">
+          <span class="state-icon" aria-hidden="true"><app-icon name="users" /></span>
+          <h2>No se pudo cargar el módulo</h2>
+          <p>{{ mensajeError() }}</p>
+          <button type="button" (click)="reintentar()">Reintentar consulta</button>
+        </div>
+      } @else if (!usuarios().length) {
+        <div class="state-panel">
+          <span class="state-icon" aria-hidden="true"><app-icon name="user" /></span>
+          @if (busqueda.value.trim()) {
+            <h2>No encontramos coincidencias</h2>
+            <p>Prueba con otro nombre, cédula o correo.</p>
+            <button type="button" (click)="limpiarBusqueda()">Limpiar búsqueda</button>
+          } @else {
+            <h2>No hay cuentas registradas</h2>
+            <p>Crea la primera cuenta para habilitar su ingreso al sistema.</p>
+            <button type="button" (click)="abrirCrear($event)">Crear primera cuenta</button>
+          }
+        </div>
+      } @else {
+        <p class="mobile-table-hint">Desliza horizontalmente para consultar todas las columnas.</p>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Lista de cuentas">
+          <table>
+            <caption class="sr-only">
+              Cuentas registradas en el sistema eléctrico
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Persona</th>
+                <th scope="col">Cédula</th>
+                <th scope="col">Rol</th>
+                <th scope="col">Contacto</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Último acceso</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (usuario of usuarios(); track usuario.id) {
+                <tr>
+                  <td>
+                    <span class="user-identity">
+                      <span class="row-avatar" aria-hidden="true">{{
+                        usuario.nombreCompleto.charAt(0)
+                      }}</span>
+                      <span>
+                        <strong>{{ usuario.nombreCompleto }}</strong>
+                        <small>{{ usuario.correo }}</small>
+                      </span>
+                    </span>
+                  </td>
+                  <td>
+                    <strong class="masked-id">{{ usuario.identificacion }}</strong>
+                  </td>
+                  <td>
+                    <span class="role-badge">{{ etiquetaRol(usuario.rol) }}</span>
+                  </td>
+                  <td>
+                    <span class="contact-value">{{ usuario.telefono || 'Sin teléfono' }}</span>
+                  </td>
+                  <td>
+                    <span class="status-badge" [class.status-badge--inactive]="!usuario.activo">
+                      <i aria-hidden="true"></i>
+                      {{ usuario.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td>
+                    {{
+                      usuario.ultimoAcceso
+                        ? (usuario.ultimoAcceso | date: 'dd/MM/yyyy, HH:mm')
+                        : 'Sin acceso registrado'
+                    }}
+                  </td>
+                  <td>
+                    @if (esAdministrador(usuario)) {
+                      <span class="protected-account"
+                        ><app-icon name="lock" /> Cuenta protegida</span
+                      >
+                    } @else {
+                      <div class="row-actions">
+                        <button
+                          type="button"
+                          class="row-action"
+                          [attr.aria-label]="'Editar a ' + usuario.nombreCompleto"
+                          (click)="abrirEditar(usuario, $event)"
+                        >
+                          <app-icon name="edit" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          class="row-action"
+                          [disabled]="!usuario.activo || enviandoInvitacionId() !== null"
+                          [attr.aria-label]="'Enviar enlace de acceso a ' + usuario.nombreCompleto"
+                          [attr.title]="
+                            usuario.activo
+                              ? 'Enviar un enlace de 30 minutos para crear o cambiar la contraseña'
+                              : 'Activa la cuenta antes de enviar el acceso'
+                          "
+                          (click)="enviarInvitacion(usuario)"
+                        >
+                          @if (enviandoInvitacionId() === usuario.id) {
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            Enviando…
+                          } @else {
+                            <app-icon name="mail" />
+                            Enviar acceso
+                          }
+                        </button>
+                        <button
+                          type="button"
+                          class="row-action row-action--state"
+                          [class.row-action--restore]="!usuario.activo"
+                          [attr.aria-label]="
+                            (usuario.activo ? 'Desactivar a ' : 'Reactivar a ') +
+                            usuario.nombreCompleto
+                          "
+                          (click)="solicitarCambioEstado(usuario, $event)"
+                        >
+                          <app-icon [name]="usuario.activo ? 'pause-circle' : 'refresh'" />
+                          {{ usuario.activo ? 'Desactivar' : 'Reactivar' }}
+                        </button>
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <footer class="pagination-bar">
+          <p>
+            Mostrando <strong>{{ rangoInicio() }}–{{ rangoFin() }}</strong> de
+            <strong>{{ total() }}</strong>
+          </p>
+          <nav aria-label="Paginación de cuentas">
+            <button type="button" [disabled]="pagina() === 1" (click)="cambiarPagina(pagina() - 1)">
+              Anterior
+            </button>
+            <span aria-current="page">Página {{ pagina() }} de {{ totalPaginas() }}</span>
+            <button
+              type="button"
+              [disabled]="pagina() === totalPaginas()"
+              (click)="cambiarPagina(pagina() + 1)"
+            >
+              Siguiente
+            </button>
+          </nav>
+        </footer>
+      }
+    </div>
+
+    <aside class="module-note" aria-label="Política de cuentas">
+      <app-icon name="help" />
+      <p>
+        Las cuentas no se eliminan. Se desactivan y reactivan para conservar sus operaciones y la
+        auditoría. La cuenta Administrador permanece protegida.
+      </p>
+    </aside>
+  </div>
+
+  @if (confirmacion(); as confirmacionActual) {
+    <div class="dialog-backdrop" aria-hidden="true"></div>
+    <section
+      #confirmationDialog
+      class="confirmation-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirmation-title"
+      aria-describedby="confirmation-description"
+    >
+      <span class="confirmation-icon" aria-hidden="true">
+        <app-icon [name]="confirmacionActual.tipo === 'descartar' ? 'help' : 'user'" />
+      </span>
+      <h2 id="confirmation-title">
+        @if (confirmacionActual.tipo === 'descartar') {
+          ¿Descartar los cambios?
+        } @else {
+          {{ confirmacionActual.activar ? 'Reactivar cuenta' : 'Desactivar cuenta' }}
+        }
+      </h2>
+      <p id="confirmation-description">
+        @if (confirmacionActual.tipo === 'descartar') {
+          La información escrita en el formulario no se guardará.
+        } @else if (confirmacionActual.activar) {
+          {{ confirmacionActual.usuario.nombreCompleto }} podrá volver a iniciar sesión.
+        } @else {
+          {{ confirmacionActual.usuario.nombreCompleto }} perderá el acceso sin borrar su historial.
+        }
+      </p>
+
+      @if (confirmacionActual.tipo === 'estado') {
+        <div class="form-field confirmation-reason">
+          <label for="user-state-reason">Motivo del cambio <span>*</span></label>
+          <textarea
+            id="user-state-reason"
+            class="resize-none"
+            [formControl]="motivoEstado"
+            rows="3"
+            maxlength="250"
+            [attr.aria-invalid]="motivoEstado.invalid && motivoEstado.touched"
+            [attr.aria-describedby]="
+              motivoEstado.invalid && motivoEstado.touched ? 'user-state-reason-error' : null
+            "
+          ></textarea>
+          @if (motivoEstado.invalid && motivoEstado.touched) {
+            <small id="user-state-reason-error" class="field-error">
+              Escribe un motivo de al menos 5 caracteres.
+            </small>
+          }
+        </div>
+      }
+
+      @if (mensajeConfirmacion()) {
+        <div class="dialog-error" role="alert">{{ mensajeConfirmacion() }}</div>
+      }
+
+      <footer>
+        <button
+          #confirmationCancel
+          type="button"
+          class="secondary-action"
+          [disabled]="procesandoEstado()"
+          (click)="cerrarConfirmacion()"
+        >
+          {{ confirmacionActual.tipo === 'descartar' ? 'Seguir editando' : 'Cancelar' }}
+        </button>
+        <button
+          type="button"
+          class="confirmation-action"
+          [class.confirmation-action--danger]="confirmacionActual.tipo === 'descartar'"
+          [class.confirmation-action--warning]="
+            confirmacionActual.tipo === 'estado' && !confirmacionActual.activar
+          "
+          [disabled]="procesandoEstado()"
+          [attr.aria-busy]="procesandoEstado()"
+          (click)="confirmarAccion()"
+        >
+          @if (procesandoEstado()) {
+            <span class="button-spinner" aria-hidden="true"></span>
+            Procesando…
+          } @else if (confirmacionActual.tipo === 'descartar') {
+            Descartar cambios
+          } @else {
+            {{ confirmacionActual.activar ? 'Reactivar' : 'Desactivar' }}
+          }
+        </button>
+      </footer>
+    </section>
+  }
+</section>

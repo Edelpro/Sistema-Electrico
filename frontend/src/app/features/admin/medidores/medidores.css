@@ -1,0 +1,60 @@
+table {
+  min-width: 72rem;
+}
+
+.meter-form-grid {
+  align-items: start;
+}
+
+.meter-identity,
+.supply-reference,
+.date-value {
+  display: flex;
+  min-width: 10rem;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.meter-identity {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.meter-identity > span:last-child,
+.meter-identity strong,
+.meter-identity small,
+.supply-reference strong,
+.supply-reference small,
+.date-value strong,
+.date-value small {
+  display: block;
+}
+
+.meter-identity strong,
+.supply-reference strong,
+.date-value strong {
+  color: var(--color-text);
+  font-size: 0.73rem;
+}
+
+.meter-identity small,
+.supply-reference small,
+.date-value small {
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+.meter-status--faulty {
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-canvas));
+}
+
+input[type='date'] {
+  color-scheme: light;
+}
+
+:host-context(.dark-theme) input[type='date'] {
+  color-scheme: dark;
+}
