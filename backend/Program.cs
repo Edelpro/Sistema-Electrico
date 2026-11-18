@@ -38,6 +38,21 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // AUTENTICACIÓN JWT
+// La clave nunca se guarda en appsettings.json. En desarrollo se toma de
+// appsettings.Development.json; en producción, de la variable de entorno Jwt__Key.
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+{
+    throw new InvalidOperationException(
+        "Configure Jwt:Key con al menos 32 caracteres (variable de entorno Jwt__Key en producción).");
+}
+if (!builder.Environment.IsDevelopment() &&
+    jwtKey.Contains("DESARROLLO", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException(
+        "La clave JWT de desarrollo no puede usarse fuera del entorno Development.");
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -52,9 +67,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"],
 
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(
-                    builder.Configuration["Jwt:Key"]!
-                )
+                Encoding.UTF8.GetBytes(jwtKey)
             )
         };
 
